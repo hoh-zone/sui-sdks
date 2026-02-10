@@ -6,12 +6,12 @@ import (
 )
 
 const (
-	FloatScalar             = 1_000_000_000.0
-	DeepScalar              = 1_000_000.0
-	MaxTimestamp      uint64 = 1_844_674_407_370_955_161
-	PriceInfoObjectMaxAgeMs = 15_000
-	GasBudget         int64  = 250_000_000
-	PoolCreationFeeDeep      = 500_000_000.0
+	FloatScalar                    = 1_000_000_000.0
+	DeepScalar                     = 1_000_000.0
+	MaxTimestamp            uint64 = 1_844_674_407_370_955_161
+	PriceInfoObjectMaxAgeMs        = 30_000
+	GasBudget               int64  = 250_000_000
+	PoolCreationFeeDeep            = 500_000_000.0
 )
 
 type DeepBookConfig struct {
@@ -79,21 +79,21 @@ func NewDeepBookConfig(opts ConfigOptions) *DeepBookConfig {
 	}
 
 	return &DeepBookConfig{
-		Address:             address,
-		Network:             opts.Network,
-		BalanceManagers:     opts.BalanceManagers,
-		MarginManagers:      opts.MarginManagers,
-		Coins:               coins,
-		Pools:               pools,
-		MarginPools:         marginPools,
-		AdminCap:            opts.AdminCap,
-		MarginAdminCap:      opts.MarginAdminCap,
-		MarginMaintainerCap: opts.MarginMaintainerCap,
-		DeepbookPackageID:   packageIDs.DeepbookPackageID,
-		RegistryID:          packageIDs.RegistryID,
-		DeepTreasuryID:      packageIDs.DeepTreasuryID,
-		MarginPackageID:     packageIDs.MarginPackageID,
-		MarginRegistryID:    packageIDs.MarginRegistryID,
+		Address:              address,
+		Network:              opts.Network,
+		BalanceManagers:      opts.BalanceManagers,
+		MarginManagers:       opts.MarginManagers,
+		Coins:                coins,
+		Pools:                pools,
+		MarginPools:          marginPools,
+		AdminCap:             opts.AdminCap,
+		MarginAdminCap:       opts.MarginAdminCap,
+		MarginMaintainerCap:  opts.MarginMaintainerCap,
+		DeepbookPackageID:    packageIDs.DeepbookPackageID,
+		RegistryID:           packageIDs.RegistryID,
+		DeepTreasuryID:       packageIDs.DeepTreasuryID,
+		MarginPackageID:      packageIDs.MarginPackageID,
+		MarginRegistryID:     packageIDs.MarginRegistryID,
 		LiquidationPackageID: packageIDs.LiquidationPackageID,
 	}
 }

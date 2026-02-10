@@ -51,21 +51,23 @@ func TransactionFrom(serialized string) (*Transaction, error) {
 }
 
 func (t *Transaction) GetData() TransactionData { return t.data }
-func (t *Transaction) SetSender(sender string) { t.data.Sender = utils.NormalizeSuiAddress(sender) }
+func (t *Transaction) SetSender(sender string)  { t.data.Sender = utils.NormalizeSuiAddress(sender) }
 func (t *Transaction) SetSenderIfNotSet(sender string) {
 	if t.data.Sender == "" {
 		t.SetSender(sender)
 	}
 }
-func (t *Transaction) SetExpiration(exp any) { t.data.Expiration = exp }
-func (t *Transaction) SetGasPrice(price any) { t.data.GasData.Price = fmt.Sprintf("%v", price) }
+func (t *Transaction) SetExpiration(exp any)   { t.data.Expiration = exp }
+func (t *Transaction) SetGasPrice(price any)   { t.data.GasData.Price = fmt.Sprintf("%v", price) }
 func (t *Transaction) SetGasBudget(budget any) { t.data.GasData.Budget = fmt.Sprintf("%v", budget) }
 func (t *Transaction) SetGasBudgetIfNotSet(budget any) {
 	if t.data.GasData.Budget == "" {
 		t.SetGasBudget(budget)
 	}
 }
-func (t *Transaction) SetGasOwner(owner string) { t.data.GasData.Owner = utils.NormalizeSuiAddress(owner) }
+func (t *Transaction) SetGasOwner(owner string) {
+	t.data.GasData.Owner = utils.NormalizeSuiAddress(owner)
+}
 func (t *Transaction) SetGasPayment(payments []ObjectRef) { t.data.GasData.Payment = payments }
 
 func (t *Transaction) Gas() Argument { return Argument{"$kind": "GasCoin", "GasCoin": true} }
@@ -127,6 +129,16 @@ func (t *Transaction) BuildBase64() (string, error) {
 		return "", err
 	}
 	return base64.StdEncoding.EncodeToString(b), nil
+}
+
+func (t *Transaction) IsPreparedForSerialization() bool {
+	for _, input := range t.data.Inputs {
+		kind, _ := input["$kind"].(string)
+		if kind == "UnresolvedObject" || kind == "UnresolvedPure" {
+			return false
+		}
+	}
+	return true
 }
 
 func (t *Transaction) Serialize() (string, error) {

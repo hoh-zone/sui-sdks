@@ -32,3 +32,26 @@ func TestTransactionBuildSerialize(t *testing.T) {
 		t.Fatalf("missing sender")
 	}
 }
+
+func TestTransactionIsPreparedForSerialization(t *testing.T) {
+	tx := NewTransaction()
+	tx.PureBytes([]byte{1, 2, 3})
+	if !tx.IsPreparedForSerialization() {
+		t.Fatalf("expected transaction with resolved pure input to be prepared")
+	}
+
+	tx2 := NewTransaction()
+	tx2.Object("0x1")
+	if tx2.IsPreparedForSerialization() {
+		t.Fatalf("expected unresolved object input to be unprepared")
+	}
+
+	tx3 := NewTransaction()
+	tx3.data.Inputs = append(tx3.data.Inputs, CallArg{
+		"$kind":          "UnresolvedPure",
+		"UnresolvedPure": map[string]any{"value": 10},
+	})
+	if tx3.IsPreparedForSerialization() {
+		t.Fatalf("expected unresolved pure input to be unprepared")
+	}
+}

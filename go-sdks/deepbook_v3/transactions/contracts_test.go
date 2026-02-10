@@ -173,4 +173,22 @@ func TestMarginContractsTargets(t *testing.T) {
 	if got := firstFunction(tx4); got != "cancel_all_conditional_orders" {
 		t.Fatalf("expected cancel_all_conditional_orders, got %s", got)
 	}
+
+	tx5 := stx.NewTransaction()
+	tpsl.CancelConditionalOrder(tx5, "mm1", "1")
+	if got := firstFunction(tx5); got != "cancel_conditional_order" {
+		t.Fatalf("expected cancel_conditional_order, got %s", got)
+	}
+
+	tx6 := stx.NewTransaction()
+	tpsl.ExecuteConditionalOrders(tx6, "0x3", "DEEP_SUI", 5)
+	if got := firstFunction(tx6); got != "execute_conditional_orders" {
+		t.Fatalf("expected execute_conditional_orders, got %s", got)
+	}
+
+	tx7 := stx.NewTransaction()
+	tpsl.ConditionalOrder(tx7, "DEEP_SUI", "0x3", "1")
+	if got := firstFunction(tx7); got != "conditional_order" {
+		t.Fatalf("expected conditional_order, got %s", got)
+	}
 }

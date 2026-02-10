@@ -354,10 +354,74 @@ func (c *MarginTPSLContract) AddConditionalOrder(tx *stx.Transaction, params typ
 	pool := c.config.GetPool(manager.PoolKey)
 	base := c.config.GetCoin(pool.BaseCoin)
 	quote := c.config.GetCoin(pool.QuoteCoin)
-	triggerPrice := uint64(math.Round((params.TriggerPrice * utils.FloatScalar * quote.Scalar) / base.Scalar))
+	condition := c.NewCondition(tx, manager.PoolKey, params.TriggerBelowPrice, params.TriggerPrice)
+
+	var pending stx.Argument
+	switch {
+	case params.PendingLimitOrder != nil:
+		pending = c.NewPendingLimitOrder(tx, manager.PoolKey, *params.PendingLimitOrder)
+	case params.PendingMarketOrder != nil:
+		pending = c.NewPendingMarketOrder(tx, manager.PoolKey, *params.PendingMarketOrder)
+	default:
+		panic("either PendingLimitOrder or PendingMarketOrder must be provided")
+	}
+
 	return tx.MoveCall(c.config.MarginPackageID+"::margin_manager::add_conditional_order", []stx.Argument{
-		tx.Object(manager.Address), pureU128String(tx, params.ConditionalOrderID), pureBool(tx, params.TriggerBelowPrice), pureU64(tx, triggerPrice), tx.Object(c.config.MarginRegistryID), tx.Object("0x6"),
+		tx.Object(manager.Address),
+		tx.Object(pool.Address),
+		tx.Object(base.PriceInfoObjectID),
+		tx.Object(quote.PriceInfoObjectID),
+		tx.Object(c.config.MarginRegistryID),
+		pureU64(tx, parseU64(params.ConditionalOrderID)),
+		condition,
+		pending,
+		tx.Object("0x6"),
 	}, []string{base.Type, quote.Type})
+}
+
+func (c *MarginTPSLContract) NewCondition(tx *stx.Transaction, poolKey string, triggerBelowPrice bool, triggerPrice float64) stx.Argument {
+	pool := c.config.GetPool(poolKey)
+	base := c.config.GetCoin(pool.BaseCoin)
+	quote := c.config.GetCoin(pool.QuoteCoin)
+	inputPrice := uint64(math.Round((triggerPrice * utils.FloatScalar * quote.Scalar) / base.Scalar))
+	return tx.MoveCall(c.config.MarginPackageID+"::tpsl::new_condition", []stx.Argument{
+		pureBool(tx, triggerBelowPrice), pureU64(tx, inputPrice),
+	}, nil)
+}
+
+func (c *MarginTPSLContract) NewPendingLimitOrder(tx *stx.Transaction, poolKey string, params types.PendingLimitOrderParams) stx.Argument {
+	pool := c.config.GetPool(poolKey)
+	base := c.config.GetCoin(pool.BaseCoin)
+	quote := c.config.GetCoin(pool.QuoteCoin)
+	inputPrice := uint64(math.Round((params.Price * utils.FloatScalar * quote.Scalar) / base.Scalar))
+	inputQuantity := uint64(math.Round(params.Quantity * base.Scalar))
+	expireTimestamp := params.ExpireTimestamp
+	if expireTimestamp == 0 {
+		expireTimestamp = utils.MaxTimestamp
+	}
+	return tx.MoveCall(c.config.MarginPackageID+"::tpsl::new_pending_limit_order", []stx.Argument{
+		pureU64(tx, parseU64(params.ClientOrderID)),
+		pureU8(tx, uint8(params.OrderType)),
+		pureU8(tx, uint8(params.SelfMatchingOption)),
+		pureU64(tx, inputPrice),
+		pureU64(tx, inputQuantity),
+		pureBool(tx, params.IsBid),
+		pureBool(tx, params.PayWithDeep),
+		pureU64(tx, expireTimestamp),
+	}, nil)
+}
+
+func (c *MarginTPSLContract) NewPendingMarketOrder(tx *stx.Transaction, poolKey string, params types.PendingMarketOrderParams) stx.Argument {
+	pool := c.config.GetPool(poolKey)
+	base := c.config.GetCoin(pool.BaseCoin)
+	inputQuantity := uint64(math.Round(params.Quantity * base.Scalar))
+	return tx.MoveCall(c.config.MarginPackageID+"::tpsl::new_pending_market_order", []stx.Argument{
+		pureU64(tx, parseU64(params.ClientOrderID)),
+		pureU8(tx, uint8(params.SelfMatchingOption)),
+		pureU64(tx, inputQuantity),
+		pureBool(tx, params.IsBid),
+		pureBool(tx, params.PayWithDeep),
+	}, nil)
 }
 
 func (c *MarginTPSLContract) CancelAllConditionalOrders(tx *stx.Transaction, marginManagerKey string) stx.Argument {
@@ -366,7 +430,32 @@ func (c *MarginTPSLContract) CancelAllConditionalOrders(tx *stx.Transaction, mar
 	base := c.config.GetCoin(pool.BaseCoin)
 	quote := c.config.GetCoin(pool.QuoteCoin)
 	return tx.MoveCall(c.config.MarginPackageID+"::margin_manager::cancel_all_conditional_orders", []stx.Argument{
-		tx.Object(manager.Address), tx.Object(c.config.MarginRegistryID),
+		tx.Object(manager.Address), tx.Object("0x6"),
+	}, []string{base.Type, quote.Type})
+}
+
+func (c *MarginTPSLContract) CancelConditionalOrder(tx *stx.Transaction, marginManagerKey, conditionalOrderID string) stx.Argument {
+	manager := c.config.GetMarginManager(marginManagerKey)
+	pool := c.config.GetPool(manager.PoolKey)
+	base := c.config.GetCoin(pool.BaseCoin)
+	quote := c.config.GetCoin(pool.QuoteCoin)
+	return tx.MoveCall(c.config.MarginPackageID+"::margin_manager::cancel_conditional_order", []stx.Argument{
+		tx.Object(manager.Address), pureU64(tx, parseU64(conditionalOrderID)), tx.Object("0x6"),
+	}, []string{base.Type, quote.Type})
+}
+
+func (c *MarginTPSLContract) ExecuteConditionalOrders(tx *stx.Transaction, managerAddress, poolKey string, maxOrdersToExecute uint64) stx.Argument {
+	pool := c.config.GetPool(poolKey)
+	base := c.config.GetCoin(pool.BaseCoin)
+	quote := c.config.GetCoin(pool.QuoteCoin)
+	return tx.MoveCall(c.config.MarginPackageID+"::margin_manager::execute_conditional_orders", []stx.Argument{
+		tx.Object(managerAddress),
+		tx.Object(pool.Address),
+		tx.Object(base.PriceInfoObjectID),
+		tx.Object(quote.PriceInfoObjectID),
+		tx.Object(c.config.MarginRegistryID),
+		pureU64(tx, maxOrdersToExecute),
+		tx.Object("0x6"),
 	}, []string{base.Type, quote.Type})
 }
 
@@ -375,7 +464,16 @@ func (c *MarginTPSLContract) ConditionalOrderIDs(tx *stx.Transaction, poolKey, m
 	base := c.config.GetCoin(pool.BaseCoin)
 	quote := c.config.GetCoin(pool.QuoteCoin)
 	return tx.MoveCall(c.config.MarginPackageID+"::margin_manager::conditional_order_ids", []stx.Argument{
-		tx.Object(marginManagerID), tx.Object(c.config.MarginRegistryID),
+		tx.Object(marginManagerID),
+	}, []string{base.Type, quote.Type})
+}
+
+func (c *MarginTPSLContract) ConditionalOrder(tx *stx.Transaction, poolKey, marginManagerID, conditionalOrderID string) stx.Argument {
+	pool := c.config.GetPool(poolKey)
+	base := c.config.GetCoin(pool.BaseCoin)
+	quote := c.config.GetCoin(pool.QuoteCoin)
+	return tx.MoveCall(c.config.MarginPackageID+"::margin_manager::conditional_order", []stx.Argument{
+		tx.Object(marginManagerID), pureU64(tx, parseU64(conditionalOrderID)),
 	}, []string{base.Type, quote.Type})
 }
 
@@ -384,7 +482,7 @@ func (c *MarginTPSLContract) LowestTriggerAbovePrice(tx *stx.Transaction, poolKe
 	base := c.config.GetCoin(pool.BaseCoin)
 	quote := c.config.GetCoin(pool.QuoteCoin)
 	return tx.MoveCall(c.config.MarginPackageID+"::margin_manager::lowest_trigger_above_price", []stx.Argument{
-		tx.Object(marginManagerID), tx.Object(c.config.MarginRegistryID),
+		tx.Object(marginManagerID),
 	}, []string{base.Type, quote.Type})
 }
 
@@ -393,6 +491,6 @@ func (c *MarginTPSLContract) HighestTriggerBelowPrice(tx *stx.Transaction, poolK
 	base := c.config.GetCoin(pool.BaseCoin)
 	quote := c.config.GetCoin(pool.QuoteCoin)
 	return tx.MoveCall(c.config.MarginPackageID+"::margin_manager::highest_trigger_below_price", []stx.Argument{
-		tx.Object(marginManagerID), tx.Object(c.config.MarginRegistryID),
+		tx.Object(marginManagerID),
 	}, []string{base.Type, quote.Type})
 }
