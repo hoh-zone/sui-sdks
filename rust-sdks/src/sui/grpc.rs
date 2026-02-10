@@ -2,6 +2,8 @@ use std::time::Duration;
 use tonic::codegen::http::Uri;
 use tonic::transport::{Channel, Endpoint};
 
+use super::utils;
+
 #[derive(Debug, thiserror::Error)]
 pub enum GrpcError {
     #[error("invalid grpc endpoint: {0}")]
@@ -65,10 +67,7 @@ impl Client {
 }
 
 pub fn default_grpc_fullnode_url(network: &str) -> String {
-    match network {
-        "mainnet" => "https://fullnode.mainnet.sui.io:443".to_string(),
-        "testnet" => "https://fullnode.testnet.sui.io:443".to_string(),
-        "devnet" => "https://fullnode.devnet.sui.io:443".to_string(),
-        _ => "https://fullnode.testnet.sui.io:443".to_string(),
-    }
+    utils::grpc_fullnode_url(network)
+        .unwrap_or("https://fullnode.testnet.sui.io:443")
+        .to_string()
 }

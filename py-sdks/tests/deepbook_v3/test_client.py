@@ -8,7 +8,28 @@ from pysdks.deepbook_v3 import BalanceManager, DeepBookClient, DeepBookConfig, M
 class _MockDryRunClient:
     def call(self, method, params=None):
         self._last_method = method
-        _ = params
+        commands = params[0] if params else []
+        fn = ""
+        if commands and isinstance(commands[0], dict):
+            move = commands[0].get("MoveCall") or {}
+            mod = move.get("module", "")
+            fun = move.get("function", "")
+            fn = f"{mod}::{fun}"
+
+        if fn == "pool::account_open_orders":
+            # vector<u128>[11, 22]
+            payload = b"\x02" + (11).to_bytes(16, "little") + (22).to_bytes(16, "little")
+            return {"commandResults": [{"returnValues": [{"bcs": base64.b64encode(payload).decode()}]}]}
+
+        if fn == "registry::get_balance_manager_ids":
+            # vector<address>[0x..aa, 0x..bb]
+            payload = b"\x02" + (b"\xAA" * 32) + (b"\xBB" * 32)
+            return {"commandResults": [{"returnValues": [{"bcs": base64.b64encode(payload).decode()}]}]}
+
+        if fn == "pool::get_pool_id_by_asset":
+            payload = b"\xCC" * 32
+            return {"commandResults": [{"returnValues": [{"bcs": base64.b64encode(payload).decode()}]}]}
+
         w = BCSWriter()
         w.write_u64(100)
         one = base64.b64encode(w.to_bytes()).decode()
@@ -59,6 +80,39 @@ class TestDeepBookClient(unittest.TestCase):
         self.assertGreater(c.mid_price("DEEP_SUI"), 0)
         self.assertTrue(c.get_order("DEEP_SUI", "1"))
         self.assertTrue(c.get_margin_account_order_details("mm1"))
+
+    def test_additional_ts_parity_helpers(self):
+        c = self._client()
+        self.assertEqual(["11", "22"], c.account_open_orders("DEEP_SUI", "m1"))
+        self.assertEqual("0x" + ("cc" * 32), c.get_pool_id_by_assets("0x2::sui::SUI", "0x2::sui::SUI"))
+        self.assertEqual(
+            ["0x" + ("aa" * 32), "0x" + ("bb" * 32)],
+            c.get_balance_manager_ids("0x1"),
+        )
+
+    def test_more_ts_parity_helpers(self):
+        c = self._client()
+        vault = c.vault_balances("DEEP_SUI")
+        self.assertIn("base", vault)
+        self.assertIn("quote", vault)
+        self.assertIn("deep", vault)
+
+        trade = c.pool_trade_params("DEEP_SUI")
+        self.assertIn("takerFee", trade)
+        self.assertIn("makerFee", trade)
+        self.assertIn("stakeRequired", trade)
+
+        book = c.pool_book_params("DEEP_SUI")
+        self.assertIn("tickSize", book)
+        self.assertIn("lotSize", book)
+        self.assertIn("minSize", book)
+
+        locked = c.locked_balance("DEEP_SUI", "m1")
+        self.assertIn("base", locked)
+        self.assertIn("quote", locked)
+        self.assertIn("deep", locked)
+
+        self.assertTrue(c.account("DEEP_SUI", "m1"))
 
     def test_check_manager_balance(self):
         c = self._client()

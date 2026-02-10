@@ -1,6 +1,6 @@
 use sha2::{Digest, Sha256};
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum SignatureScheme {
     Ed25519,
     Secp256k1,
@@ -13,6 +13,15 @@ impl SignatureScheme {
             SignatureScheme::Ed25519 => 0x00,
             SignatureScheme::Secp256k1 => 0x01,
             SignatureScheme::Secp256r1 => 0x02,
+        }
+    }
+
+    pub fn from_flag(flag: u8) -> Option<Self> {
+        match flag {
+            0x00 => Some(SignatureScheme::Ed25519),
+            0x01 => Some(SignatureScheme::Secp256k1),
+            0x02 => Some(SignatureScheme::Secp256r1),
+            _ => None,
         }
     }
 }

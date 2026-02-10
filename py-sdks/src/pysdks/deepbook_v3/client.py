@@ -130,6 +130,88 @@ class DeepBookClient:
         self.deepbook.get_order(tx, pool_key, order_id)
         return base64.b64encode(self._return_bytes(self._simulate(tx), 0, 0)).decode()
 
+    def account_open_orders(self, pool_key: str, manager_key: str) -> List[str]:
+        tx = Transaction()
+        self.deepbook.account_open_orders(tx, pool_key, manager_key)
+        return [str(v) for v in self._read_vec_u128(self._return_bytes(self._simulate(tx), 0, 0))]
+
+    def get_pool_id_by_assets(self, base_type: str, quote_type: str) -> str:
+        tx = Transaction()
+        self.deepbook.get_pool_id_by_assets(tx, base_type, quote_type)
+        return self._read_address(self._return_bytes(self._simulate(tx), 0, 0))
+
+    def get_balance_manager_ids(self, owner: str) -> List[str]:
+        tx = Transaction()
+        self.deepbook.get_balance_manager_ids(tx, owner)
+        return self._read_vec_address(self._return_bytes(self._simulate(tx), 0, 0))
+
+    def vault_balances(self, pool_key: str) -> Dict[str, float]:
+        tx = Transaction()
+        self.deepbook.vault_balances(tx, pool_key)
+        pool = self.config.get_pool(pool_key)
+        base = self.config.get_coin(pool.base_coin)
+        quote = self.config.get_coin(pool.quote_coin)
+        sim = self._simulate(tx)
+        base_in_vault = self._read_u64(sim, 0, 0)
+        quote_in_vault = self._read_u64(sim, 0, 1)
+        deep_in_vault = self._read_u64(sim, 0, 2)
+        return {
+            "base": base_in_vault / base.scalar,
+            "quote": quote_in_vault / quote.scalar,
+            "deep": deep_in_vault / DEEP_SCALAR,
+        }
+
+    def pool_trade_params(self, pool_key: str) -> Dict[str, float]:
+        tx = Transaction()
+        self.deepbook.pool_trade_params(tx, pool_key)
+        sim = self._simulate(tx)
+        taker_fee = self._read_u64(sim, 0, 0)
+        maker_fee = self._read_u64(sim, 0, 1)
+        stake_required = self._read_u64(sim, 0, 2)
+        return {
+            "takerFee": taker_fee / FLOAT_SCALAR,
+            "makerFee": maker_fee / FLOAT_SCALAR,
+            "stakeRequired": stake_required / DEEP_SCALAR,
+        }
+
+    def pool_book_params(self, pool_key: str) -> Dict[str, float]:
+        tx = Transaction()
+        self.deepbook.pool_book_params(tx, pool_key)
+        pool = self.config.get_pool(pool_key)
+        base = self.config.get_coin(pool.base_coin)
+        quote = self.config.get_coin(pool.quote_coin)
+        sim = self._simulate(tx)
+        tick_size = self._read_u64(sim, 0, 0)
+        lot_size = self._read_u64(sim, 0, 1)
+        min_size = self._read_u64(sim, 0, 2)
+        return {
+            "tickSize": (tick_size * base.scalar) / (FLOAT_SCALAR * quote.scalar),
+            "lotSize": lot_size / base.scalar,
+            "minSize": min_size / base.scalar,
+        }
+
+    def locked_balance(self, pool_key: str, manager_key: str) -> Dict[str, float]:
+        tx = Transaction()
+        self.deepbook.locked_balance(tx, pool_key, manager_key)
+        pool = self.config.get_pool(pool_key)
+        base = self.config.get_coin(pool.base_coin)
+        quote = self.config.get_coin(pool.quote_coin)
+        sim = self._simulate(tx)
+        base_locked = self._read_u64(sim, 0, 0)
+        quote_locked = self._read_u64(sim, 0, 1)
+        deep_locked = self._read_u64(sim, 0, 2)
+        return {
+            "base": base_locked / base.scalar,
+            "quote": quote_locked / quote.scalar,
+            "deep": deep_locked / DEEP_SCALAR,
+        }
+
+    def account(self, pool_key: str, manager_key: str) -> str:
+        # Baseline parity: return raw account bytes as base64. Full struct parsing can be added incrementally.
+        tx = Transaction()
+        self.deepbook.account(tx, pool_key, manager_key)
+        return base64.b64encode(self._return_bytes(self._simulate(tx), 0, 0)).decode()
+
     def get_margin_account_order_details(self, margin_manager_key: str) -> str:
         tx = Transaction()
         self.margin_manager.get_margin_account_order_details(tx, margin_manager_key)
@@ -159,3 +241,24 @@ class DeepBookClient:
     def _read_u64(self, sim: Dict[str, Any], command_index: int, return_index: int) -> int:
         raw = self._return_bytes(sim, command_index, return_index)
         return BCSReader(raw).read_u64()
+
+    def _read_vec_u128(self, raw: bytes) -> List[int]:
+        r = BCSReader(raw)
+        length = r.read_uleb128()
+        out: List[int] = []
+        for _ in range(length):
+            out.append(int.from_bytes(r.read_bytes(16), "little"))
+        return out
+
+    def _read_address(self, raw: bytes) -> str:
+        if len(raw) != 32:
+            raise ValueError("invalid address bytes")
+        return "0x" + raw.hex()
+
+    def _read_vec_address(self, raw: bytes) -> List[str]:
+        r = BCSReader(raw)
+        length = r.read_uleb128()
+        out: List[str] = []
+        for _ in range(length):
+            out.append(self._read_address(r.read_bytes(32)))
+        return out

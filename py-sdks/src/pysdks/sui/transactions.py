@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
+import hashlib
 import json
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -12,6 +14,25 @@ from typing import Any, Callable, Dict, List, Optional, Protocol
 _SYSTEM_STATE_OBJECT_ID = "0x5"
 _STAKE_REQUEST_TARGET = "0x3::sui_system::request_add_stake"
 _UNSTAKE_REQUEST_TARGET = "0x3::sui_system::request_withdraw_stake"
+_TX_DIGEST_PREFIX = b"TransactionData::"
+_BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+
+
+def _base58_encode(raw: bytes) -> str:
+    if not raw:
+        return ""
+    number = int.from_bytes(raw, "big")
+    encoded = ""
+    while number > 0:
+        number, remainder = divmod(number, 58)
+        encoded = _BASE58_ALPHABET[remainder] + encoded
+    leading_zeros = 0
+    for b in raw:
+        if b == 0:
+            leading_zeros += 1
+        else:
+            break
+    return ("1" * leading_zeros) + encoded
 
 
 @dataclass
@@ -219,6 +240,9 @@ class Transaction:
     def make_move_vec(self, type_tag: Optional[str], elements: List[Dict[str, Any]]) -> Dict[str, Any]:
         return self.add_command(TransactionCommands.make_move_vec(type_tag, elements))
 
+    def make_move_vector(self, type_tag: Optional[str], elements: List[Dict[str, Any]]) -> Dict[str, Any]:
+        return self.make_move_vec(type_tag, elements)
+
     def transfer_sui(self, recipient: str, amount: int) -> Dict[str, Any]:
         split_result = self.split_coins(self.gas(), [self.pure(self._u64_bytes(amount))])
         return self.transfer_objects([split_result], self.pure(recipient.encode("utf-8")))
@@ -229,10 +253,17 @@ class Transaction:
         amounts = [self.pure(self._u64_bytes(amount_per_split)) for _ in range(split_count)]
         return self.split_coins(coin, amounts)
 
+    def split_coin(self, coin: Dict[str, Any], amount: int) -> Dict[str, Any]:
+        return self.split_coins(coin, [self.pure(self._u64_bytes(amount))])
+
     def split_coin_and_return(self, coin: Dict[str, Any], amount: int, recipient: str) -> Dict[str, Any]:
         split_result = self.split_coins(coin, [self.pure(self._u64_bytes(amount))])
         self.transfer_objects([split_result], self.pure(recipient.encode("utf-8")))
         return split_result
+
+    def public_transfer_object(self, object_to_send: str | Dict[str, Any], recipient: str) -> Dict[str, Any]:
+        obj_arg = self.object(object_to_send)
+        return self.transfer_objects([obj_arg], self.pure(recipient.encode("utf-8")))
 
     def stake_coin(
         self,
@@ -306,13 +337,68 @@ class Transaction:
             return active_client.call("sui_executeTransactionBlock", [tx_bytes])
         return active_client.call("sui_executeTransactionBlock", [tx_bytes, signatures or [], options or {}])
 
+    async def execute_async(
+        self,
+        client: Any = None,
+        signatures: Optional[List[str]] = None,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        active_client = self._resolve_client(client)
+        tx_bytes = self.build_base64()
+        params: List[Any]
+        if signatures is None and options is None:
+            params = [tx_bytes]
+        else:
+            params = [tx_bytes, signatures or [], options or {}]
+
+        if hasattr(active_client, "execute"):
+            maybe_coro = active_client.execute("sui_executeTransactionBlock", params)
+            if asyncio.iscoroutine(maybe_coro):
+                return await maybe_coro
+            return maybe_coro
+
+        return await asyncio.to_thread(active_client.call, "sui_executeTransactionBlock", params)
+
     def inspect_all(self, client: Any = None, sender: Optional[str] = None) -> Dict[str, Any]:
         active_client = self._resolve_client(client)
         active_sender = sender or self.data.sender
         return active_client.call("sui_devInspectTransactionBlock", [active_sender, self.build_base64()])
 
+    async def inspect_all_async(self, client: Any = None, sender: Optional[str] = None) -> Dict[str, Any]:
+        active_client = self._resolve_client(client)
+        active_sender = sender or self.data.sender
+        params = [active_sender, self.build_base64()]
+        if hasattr(active_client, "execute"):
+            maybe_coro = active_client.execute("sui_devInspectTransactionBlock", params)
+            if asyncio.iscoroutine(maybe_coro):
+                return await maybe_coro
+            return maybe_coro
+        return await asyncio.to_thread(active_client.call, "sui_devInspectTransactionBlock", params)
+
     def inspect_for_cost(self, client: Any = None, sender: Optional[str] = None) -> Dict[str, int]:
         result = self.inspect_all(client=client, sender=sender)
+        summary = ((result or {}).get("result") or {}).get("effects", {}).get("gasUsed", {})
+        computation = int(summary.get("computationCost", 0))
+        storage = int(summary.get("storageCost", 0))
+        rebate = int(summary.get("storageRebate", 0))
+        return {
+            "computation_cost": computation,
+            "storage_cost": storage,
+            "storage_rebate": rebate,
+            "total_cost": computation + storage - rebate,
+        }
+
+    @classmethod
+    def digest_from_bytes(cls, transaction_data_bytes: bytes) -> str:
+        digest_bytes = hashlib.blake2b(_TX_DIGEST_PREFIX + transaction_data_bytes, digest_size=32).digest()
+        return _base58_encode(digest_bytes)
+
+    @classmethod
+    def digest_from_b64str(cls, transaction_data_bytes_str: str) -> str:
+        return cls.digest_from_bytes(base64.b64decode(transaction_data_bytes_str))
+
+    async def inspect_for_cost_async(self, client: Any = None, sender: Optional[str] = None) -> Dict[str, int]:
+        result = await self.inspect_all_async(client=client, sender=sender)
         summary = ((result or {}).get("result") or {}).get("effects", {}).get("gasUsed", {})
         computation = int(summary.get("computationCost", 0))
         storage = int(summary.get("storageCost", 0))
@@ -368,6 +454,35 @@ class ResolvePlugin(Protocol):
         ...
 
 
+class AsyncResolvePlugin(Protocol):
+    async def __call__(self, context: ResolveContext) -> None:
+        ...
+
+
+class ResolverPluginError(RuntimeError):
+    def __init__(self, index: int, plugin_name: str, cause: Exception):
+        self.index = index
+        self.plugin_name = plugin_name
+        self.cause = cause
+        super().__init__(f"resolver plugin failed at index {index} ({plugin_name}): {cause}")
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "error_type": self.__class__.__name__,
+            "index": self.index,
+            "plugin_name": self.plugin_name,
+            "cause_type": self.cause.__class__.__name__,
+            "cause_message": str(self.cause),
+            "message": str(self),
+        }
+
+    def __repr__(self) -> str:
+        return (
+            f"{self.__class__.__name__}("
+            f"index={self.index}, plugin_name={self.plugin_name!r}, cause={self.cause!r})"
+        )
+
+
 class Resolver:
     def __init__(self):
         self._plugins: List[ResolvePlugin] = []
@@ -380,8 +495,35 @@ class Resolver:
         for inp in tx.data.inputs:
             if inp.get("$kind") == "UnresolvedObject":
                 context.unresolved_inputs.append(inp)
-        for plugin in self._plugins:
-            plugin(context)
+        for index, plugin in enumerate(self._plugins):
+            plugin_name = getattr(plugin, "__name__", plugin.__class__.__name__)
+            try:
+                plugin(context)
+            except Exception as exc:
+                raise ResolverPluginError(index=index, plugin_name=plugin_name, cause=exc) from exc
+        return context
+
+
+class AsyncResolver:
+    def __init__(self):
+        self._plugins: List[Callable[[ResolveContext], Any]] = []
+
+    def add_plugin(self, plugin: Callable[[ResolveContext], Any]) -> None:
+        self._plugins.append(plugin)
+
+    async def resolve(self, tx: Transaction) -> ResolveContext:
+        context = ResolveContext(transaction=tx)
+        for inp in tx.data.inputs:
+            if inp.get("$kind") == "UnresolvedObject":
+                context.unresolved_inputs.append(inp)
+        for index, plugin in enumerate(self._plugins):
+            plugin_name = getattr(plugin, "__name__", plugin.__class__.__name__)
+            try:
+                result = plugin(context)
+                if asyncio.iscoroutine(result):
+                    await result
+            except Exception as exc:
+                raise ResolverPluginError(index=index, plugin_name=plugin_name, cause=exc) from exc
         return context
 
 
@@ -422,3 +564,46 @@ class ParallelExecutor:
         with ThreadPoolExecutor(max_workers=self.max_workers) as pool:
             futures = [pool.submit(self.executor.execute_transaction, tx) for tx in txs]
             return [f.result() for f in futures]
+
+
+class AsyncCachingExecutor:
+    def __init__(self, client: Any):
+        self.client = client
+        self._cache: Dict[str, Dict[str, Any]] = {}
+        self._lock = asyncio.Lock()
+
+    async def execute_transaction(self, tx: Transaction) -> Dict[str, Any]:
+        key = tx.build_base64()
+        async with self._lock:
+            if key in self._cache:
+                return self._cache[key]
+        result = await tx.execute_async(client=self.client)
+        async with self._lock:
+            self._cache[key] = result
+        return result
+
+
+class AsyncSerialExecutor:
+    def __init__(self, executor: AsyncCachingExecutor):
+        self.executor = executor
+
+    async def execute(self, txs: List[Transaction]) -> List[Dict[str, Any]]:
+        out: List[Dict[str, Any]] = []
+        for tx in txs:
+            out.append(await self.executor.execute_transaction(tx))
+        return out
+
+
+class AsyncParallelExecutor:
+    def __init__(self, executor: AsyncCachingExecutor, max_workers: int = 4):
+        self.executor = executor
+        self.max_workers = max_workers
+
+    async def execute(self, txs: List[Transaction]) -> List[Dict[str, Any]]:
+        semaphore = asyncio.Semaphore(self.max_workers)
+
+        async def _run(tx: Transaction) -> Dict[str, Any]:
+            async with semaphore:
+                return await self.executor.execute_transaction(tx)
+
+        return await asyncio.gather(*[_run(tx) for tx in txs])

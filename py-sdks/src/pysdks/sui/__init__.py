@@ -3,10 +3,22 @@
 from .faucet import FaucetClient, FaucetRateLimitError, get_faucet_host
 from .graphql import GraphQLClient
 from .grpc import GrpcCoreClient, SuiGrpcClient
+from .async_client import AsyncSuiClient
 from .client import SuiClient
 from .jsonrpc import JsonRpcClient
 from .multisig import MultisigPublicKey, MultisigSignature, MultisigSigner
-from .transactions import CachingExecutor, ParallelExecutor, Resolver, SerialExecutor, Transaction
+from .transactions import (
+    AsyncCachingExecutor,
+    AsyncParallelExecutor,
+    AsyncResolver,
+    AsyncSerialExecutor,
+    CachingExecutor,
+    ParallelExecutor,
+    Resolver,
+    ResolverPluginError,
+    SerialExecutor,
+    Transaction,
+)
 from .verify import (
     ParsedSerializedSignature,
     parse_serialized_signature,
@@ -18,6 +30,7 @@ from .verify import (
 __all__ = [
     "JsonRpcClient",
     "SuiClient",
+    "AsyncSuiClient",
     "GraphQLClient",
     "SuiGrpcClient",
     "GrpcCoreClient",
@@ -26,9 +39,14 @@ __all__ = [
     "get_faucet_host",
     "Transaction",
     "Resolver",
+    "ResolverPluginError",
     "CachingExecutor",
     "SerialExecutor",
     "ParallelExecutor",
+    "AsyncCachingExecutor",
+    "AsyncSerialExecutor",
+    "AsyncParallelExecutor",
+    "AsyncResolver",
     "MultisigPublicKey",
     "MultisigSignature",
     "MultisigSigner",

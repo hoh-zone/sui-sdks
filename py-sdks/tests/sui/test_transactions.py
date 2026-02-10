@@ -1,6 +1,13 @@
 import unittest
 
-from pysdks.sui.transactions import CachingExecutor, ParallelExecutor, Resolver, SerialExecutor, Transaction
+from pysdks.sui.transactions import (
+    CachingExecutor,
+    ParallelExecutor,
+    Resolver,
+    ResolverPluginError,
+    SerialExecutor,
+    Transaction,
+)
 
 
 class _MockClient:
@@ -49,6 +56,29 @@ class TestTransactions(unittest.TestCase):
         resolver.add_plugin(plugin)
         resolver.resolve(tx)
         self.assertEqual(1, seen["count"])
+
+    def test_resolver_wraps_plugin_error(self):
+        tx = Transaction()
+        tx.object("0x123")
+
+        def bad_plugin(_ctx):
+            raise ValueError("boom")
+
+        resolver = Resolver()
+        resolver.add_plugin(bad_plugin)
+
+        with self.assertRaises(ResolverPluginError) as ctx:
+            resolver.resolve(tx)
+        self.assertEqual(0, ctx.exception.index)
+        self.assertEqual("bad_plugin", ctx.exception.plugin_name)
+        self.assertIn("boom", str(ctx.exception))
+        payload = ctx.exception.to_dict()
+        self.assertEqual("ResolverPluginError", payload["error_type"])
+        self.assertEqual(0, payload["index"])
+        self.assertEqual("bad_plugin", payload["plugin_name"])
+        self.assertEqual("ValueError", payload["cause_type"])
+        self.assertEqual("boom", payload["cause_message"])
+        self.assertIn("ResolverPluginError(", repr(ctx.exception))
 
     def test_caching_executor(self):
         client = _MockClient()
@@ -126,17 +156,19 @@ class TestTransactions(unittest.TestCase):
         tx.merge_coins(coin, [split_res])
         tx.publish([b"\x00\x01"], ["0x2"])
         tx.make_move_vec("0x2::sui::SUI", [coin])
+        tx.make_move_vector("0x2::sui::SUI", [coin])
 
         self.assertEqual({"Epoch": 999}, tx.data.expiration)
         self.assertEqual("10", tx.data.gas_data["price"])
         self.assertEqual("0xabc", tx.data.gas_data["owner"])
-        self.assertEqual(5, len(tx.data.commands))
+        self.assertEqual(6, len(tx.data.commands))
         self.assertEqual("SplitCoins", tx.data.commands[0]["$kind"])
         self.assertEqual("TransferObjects", tx.data.commands[1]["$kind"])
         self.assertEqual("MergeCoins", tx.data.commands[2]["$kind"])
         self.assertEqual("Publish", tx.data.commands[3]["$kind"])
         self.assertEqual("AAE=", tx.data.commands[3]["Publish"]["modules"][0])
         self.assertEqual("MakeMoveVec", tx.data.commands[4]["$kind"])
+        self.assertEqual("MakeMoveVec", tx.data.commands[5]["$kind"])
 
     def test_transfer_and_split_convenience_methods(self):
         tx = Transaction()
@@ -154,6 +186,14 @@ class TestTransactions(unittest.TestCase):
         tx.split_coin_and_return(coin, amount=5, recipient="0xabc")
         self.assertEqual("SplitCoins", tx.data.commands[3]["$kind"])
         self.assertEqual("TransferObjects", tx.data.commands[4]["$kind"])
+
+        split_one = tx.split_coin(coin, amount=11)
+        self.assertEqual("Result", split_one["$kind"])
+        self.assertEqual("SplitCoins", tx.data.commands[5]["$kind"])
+        self.assertEqual(1, len(tx.data.commands[5]["SplitCoins"]["amounts"]))
+
+        tx.public_transfer_object("0xobj", "0xrecipient2")
+        self.assertEqual("TransferObjects", tx.data.commands[6]["$kind"])
 
     def test_split_coin_equal_validation(self):
         tx = Transaction()
@@ -184,6 +224,24 @@ class TestTransactions(unittest.TestCase):
         self.assertEqual(ticket, tx.data.commands[0]["Upgrade"]["ticket"])
         self.assertEqual("Upgrade", tx.data.commands[1]["$kind"])
         self.assertEqual("Upgrade", tx.data.commands[2]["$kind"])
+
+    def test_digest_helpers(self):
+        tx = Transaction()
+        tx.set_sender("0x1")
+        tx.move_call("0x2::m::f1", [], [])
+
+        tx_bytes = tx.build()
+        tx_b64 = tx.build_base64()
+
+        digest_from_bytes = Transaction.digest_from_bytes(tx_bytes)
+        digest_from_b64 = Transaction.digest_from_b64str(tx_b64)
+
+        self.assertEqual(digest_from_bytes, digest_from_b64)
+        self.assertTrue(len(digest_from_bytes) > 0)
+        self.assertNotIn("0", digest_from_bytes)
+        self.assertNotIn("O", digest_from_bytes)
+        self.assertNotIn("I", digest_from_bytes)
+        self.assertNotIn("l", digest_from_bytes)
 
 
 if __name__ == "__main__":

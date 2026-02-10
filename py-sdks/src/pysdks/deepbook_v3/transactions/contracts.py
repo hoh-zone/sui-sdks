@@ -173,6 +173,83 @@ class DeepBookContract:
             [base.type, quote.type],
         )
 
+    def account_open_orders(self, tx: Transaction, pool_key: str, manager_key: str):
+        pool = self.config.get_pool(pool_key)
+        manager = self.config.get_balance_manager(manager_key)
+        base = self.config.get_coin(pool.base_coin)
+        quote = self.config.get_coin(pool.quote_coin)
+        return tx.move_call(
+            f"{self.config.package_ids.deepbook_package_id}::pool::account_open_orders",
+            [tx.object(pool.address), tx.object(manager.address)],
+            [base.type, quote.type],
+        )
+
+    def get_pool_id_by_assets(self, tx: Transaction, base_type: str, quote_type: str):
+        return tx.move_call(
+            f"{self.config.package_ids.deepbook_package_id}::pool::get_pool_id_by_asset",
+            [tx.object(self.config.package_ids.registry_id)],
+            [base_type, quote_type],
+        )
+
+    def get_balance_manager_ids(self, tx: Transaction, owner: str):
+        return tx.move_call(
+            f"{self.config.package_ids.deepbook_package_id}::registry::get_balance_manager_ids",
+            [tx.object(self.config.package_ids.registry_id), tx.pure(owner.encode("utf-8"))],
+            [],
+        )
+
+    def vault_balances(self, tx: Transaction, pool_key: str):
+        pool = self.config.get_pool(pool_key)
+        base = self.config.get_coin(pool.base_coin)
+        quote = self.config.get_coin(pool.quote_coin)
+        return tx.move_call(
+            f"{self.config.package_ids.deepbook_package_id}::pool::vault_balances",
+            [tx.object(pool.address)],
+            [base.type, quote.type],
+        )
+
+    def pool_trade_params(self, tx: Transaction, pool_key: str):
+        pool = self.config.get_pool(pool_key)
+        base = self.config.get_coin(pool.base_coin)
+        quote = self.config.get_coin(pool.quote_coin)
+        return tx.move_call(
+            f"{self.config.package_ids.deepbook_package_id}::pool::pool_trade_params",
+            [tx.object(pool.address)],
+            [base.type, quote.type],
+        )
+
+    def pool_book_params(self, tx: Transaction, pool_key: str):
+        pool = self.config.get_pool(pool_key)
+        base = self.config.get_coin(pool.base_coin)
+        quote = self.config.get_coin(pool.quote_coin)
+        return tx.move_call(
+            f"{self.config.package_ids.deepbook_package_id}::pool::pool_book_params",
+            [tx.object(pool.address)],
+            [base.type, quote.type],
+        )
+
+    def account(self, tx: Transaction, pool_key: str, manager_key: str):
+        pool = self.config.get_pool(pool_key)
+        manager = self.config.get_balance_manager(manager_key)
+        base = self.config.get_coin(pool.base_coin)
+        quote = self.config.get_coin(pool.quote_coin)
+        return tx.move_call(
+            f"{self.config.package_ids.deepbook_package_id}::pool::account",
+            [tx.object(pool.address), tx.object(manager.address)],
+            [base.type, quote.type],
+        )
+
+    def locked_balance(self, tx: Transaction, pool_key: str, manager_key: str):
+        pool = self.config.get_pool(pool_key)
+        manager = self.config.get_balance_manager(manager_key)
+        base = self.config.get_coin(pool.base_coin)
+        quote = self.config.get_coin(pool.quote_coin)
+        return tx.move_call(
+            f"{self.config.package_ids.deepbook_package_id}::pool::locked_balance",
+            [tx.object(pool.address), tx.object(manager.address)],
+            [base.type, quote.type],
+        )
+
     def can_place_limit_order(self, tx: Transaction, params: CanPlaceLimitOrderParams):
         pool = self.config.get_pool(params.pool_key)
         manager = self.config.get_balance_manager(params.balance_manager_key)

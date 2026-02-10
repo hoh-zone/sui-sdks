@@ -1,2 +1,11 @@
+pub mod client;
+pub mod faucet;
 pub mod graphql;
 pub mod grpc;
+pub mod jsonrpc;
+pub mod keypairs;
+pub mod multisig;
+pub mod transactions;
+pub mod utils;
+pub mod verify;
+pub mod zklogin;
