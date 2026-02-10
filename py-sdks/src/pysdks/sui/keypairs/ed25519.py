@@ -1,12 +1,10 @@
-"""Ed25519 keypair API (placeholder backend)."""
+"""Ed25519 keypair API (cryptography backend)."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ._placeholder import derive_public_key, generate_private_key, sign_with_public, verify_with_public
-
-_LABEL = b"ed25519"
+from ._cryptography_backend import ed25519_public_key_bytes, ed25519_sign, ed25519_verify, generate_private_key
 
 
 @dataclass
@@ -24,17 +22,17 @@ class Ed25519Keypair:
         return cls(_private_key=private_key)
 
     def public_key_bytes(self) -> bytes:
-        return derive_public_key(self._private_key, _LABEL)
+        return ed25519_public_key_bytes(self._private_key)
 
     def private_key_bytes(self) -> bytes:
         return self._private_key
 
     def sign(self, message: bytes) -> bytes:
-        return sign_with_public(self.public_key_bytes(), message, _LABEL)
+        return ed25519_sign(self._private_key, message)
 
     def verify(self, message: bytes, signature: bytes) -> bool:
-        return verify_with_public(self.public_key_bytes(), message, signature, _LABEL)
+        return ed25519_verify(self.public_key_bytes(), message, signature)
 
     @staticmethod
     def verify_with_public_key(public_key: bytes, message: bytes, signature: bytes) -> bool:
-        return verify_with_public(public_key, message, signature, _LABEL)
+        return ed25519_verify(public_key, message, signature)

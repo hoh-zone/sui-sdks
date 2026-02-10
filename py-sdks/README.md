@@ -37,5 +37,4 @@ PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_*.py' -v
 
 ## Security note
 
-Current keypair implementations use a testing-only placeholder signing backend (no external crypto dependency).
-They are for local SDK flow validation only and not production cryptography.
+Current keypair implementations use the Python `cryptography` dependency for real signature operations.

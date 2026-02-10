@@ -9,6 +9,9 @@ description = "Python SDKs mirroring ts-sdks/go-sdks scope"
 readme = "README.md"
 requires-python = ">=3.9"
 authors = [{name = "Sui SDKs"}]
+dependencies = [
+  "cryptography>=42.0.0",
+]
 
 [project.optional-dependencies]
 grpc = [

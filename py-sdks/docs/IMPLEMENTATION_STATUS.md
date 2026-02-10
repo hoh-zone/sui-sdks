@@ -15,7 +15,7 @@ Implemented:
   - resolver plugin pipeline
   - caching / serial / parallel executors
 - Sui crypto baseline:
-  - keypairs (`ed25519`, `secp256k1`, `secp256r1`) via placeholder backend
+  - keypairs (`ed25519`, `secp256k1`, `secp256r1`) via `cryptography` backend
   - verify helpers
   - multisig baseline
 - Deepbook v3 baseline:

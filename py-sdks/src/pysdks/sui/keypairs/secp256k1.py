@@ -1,12 +1,12 @@
-"""Secp256k1 keypair API (placeholder backend)."""
+"""Secp256k1 keypair API (cryptography backend)."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ._placeholder import derive_public_key, generate_private_key, sign_with_public, verify_with_public
+from ._cryptography_backend import ecdsa_public_key_bytes, ecdsa_sign, ecdsa_verify, generate_private_key
 
-_LABEL = b"secp256k1"
+_CURVE = "secp256k1"
 
 
 @dataclass
@@ -24,15 +24,14 @@ class Secp256k1Keypair:
         return cls(_private_key=private_key)
 
     def public_key_bytes(self) -> bytes:
-        # Sui uses compressed secp256k1 public keys (33 bytes).
-        return derive_public_key(self._private_key, _LABEL, size=33, prefix=0x02)
+        return ecdsa_public_key_bytes(self._private_key, _CURVE)
 
     def private_key_bytes(self) -> bytes:
         return self._private_key
 
     def sign(self, message: bytes) -> bytes:
-        return sign_with_public(self.public_key_bytes(), message, _LABEL)
+        return ecdsa_sign(self._private_key, message, _CURVE)
 
     @staticmethod
     def verify_with_public_key(public_key: bytes, message: bytes, signature: bytes) -> bool:
-        return verify_with_public(public_key, message, signature, _LABEL)
+        return ecdsa_verify(public_key, message, signature, _CURVE)

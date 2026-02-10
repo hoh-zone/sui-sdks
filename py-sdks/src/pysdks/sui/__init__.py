@@ -3,6 +3,7 @@
 from .faucet import FaucetClient, FaucetRateLimitError, get_faucet_host
 from .graphql import GraphQLClient
 from .grpc import GrpcCoreClient, SuiGrpcClient
+from .client import SuiClient
 from .jsonrpc import JsonRpcClient
 from .multisig import MultisigPublicKey, MultisigSignature, MultisigSigner
 from .transactions import CachingExecutor, ParallelExecutor, Resolver, SerialExecutor, Transaction
@@ -16,6 +17,7 @@ from .verify import (
 
 __all__ = [
     "JsonRpcClient",
+    "SuiClient",
     "GraphQLClient",
     "SuiGrpcClient",
     "GrpcCoreClient",

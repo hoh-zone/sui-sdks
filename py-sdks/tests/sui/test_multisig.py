@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 from pysdks.sui.keypairs import Ed25519Keypair, SignatureScheme
 from pysdks.sui.multisig import (
@@ -55,6 +56,47 @@ class TestMultisig(unittest.TestCase):
                 weights=[1 for _ in signers],
                 threshold=1,
             )
+
+    def test_signature_roundtrip_serialization(self):
+        ms = MultisigSignature(signatures=[b"sig1", b"sig2"], bitmap=[0, 2])
+        encoded = ms.to_base64()
+        decoded = MultisigSignature.from_base64(encoded)
+        self.assertEqual(ms.signatures, decoded.signatures)
+        self.assertEqual(ms.bitmap, decoded.bitmap)
+
+    def test_build_and_sign_helpers(self):
+        pub = MultisigPublicKey(public_keys=[b"pk1", b"pk2", b"pk3"], weights=[1, 1, 1], threshold=2)
+        signer = MultisigSigner(pub, scheme=SignatureScheme.ED25519)
+
+        with patch("pysdks.sui.multisig.verify_raw_signature", return_value=True):
+            built = signer.build(b"m", [(0, b"s1"), (1, b"s2")])
+            self.assertEqual([0, 1], built.bitmap)
+            self.assertTrue(signer.is_threshold_met(built))
+
+        class _FakeSigner:
+            def __init__(self, value: bytes):
+                self.value = value
+
+            def sign(self, _message: bytes) -> bytes:
+                return self.value
+
+        with patch("pysdks.sui.multisig.verify_raw_signature", return_value=True):
+            signed = signer.sign(b"m", [(1, _FakeSigner(b"sx")), (2, _FakeSigner(b"sy"))])
+            self.assertEqual([1, 2], signed.bitmap)
+
+    def test_build_validation_errors(self):
+        pub = MultisigPublicKey(public_keys=[b"pk1", b"pk2"], weights=[1, 1], threshold=2)
+        signer = MultisigSigner(pub, scheme=SignatureScheme.ED25519)
+
+        with self.assertRaises(ValueError):
+            signer.build(b"m", [])
+
+        with self.assertRaises(ValueError):
+            signer.build(b"m", [(0, b"s1"), (0, b"s2")])
+
+        with patch("pysdks.sui.multisig.verify_raw_signature", return_value=False):
+            with self.assertRaises(ValueError):
+                signer.build(b"m", [(0, b"s1"), (1, b"s2")])
 
 
 if __name__ == "__main__":
