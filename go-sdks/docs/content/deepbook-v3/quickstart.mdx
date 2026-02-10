@@ -1,0 +1,78 @@
+---
+title: 快速开始
+---
+
+## 1. 初始化底层 Sui JSON-RPC 客户端
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+
+	deepbookv3 "github.com/sui-sdks/go-sdks/deepbook_v3"
+	"github.com/sui-sdks/go-sdks/deepbook_v3/types"
+	"github.com/sui-sdks/go-sdks/sui/jsonrpc"
+)
+
+func main() {
+	rpc, err := jsonrpc.NewClient(jsonrpc.ClientOptions{
+		Network: "testnet",
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	db := deepbookv3.NewClient(deepbookv3.ClientOptions{
+		Client:  rpc,
+		Network: "testnet",
+		Options: deepbookv3.Options{
+			Address: "0xYOUR_ADDRESS",
+			BalanceManagers: map[string]types.BalanceManager{
+				"main": {
+					Address: "0xYOUR_BALANCE_MANAGER_ID",
+				},
+			},
+			MarginManagers: map[string]types.MarginManager{
+				"main_margin": {
+					Address: "0xYOUR_MARGIN_MANAGER_ID",
+					PoolKey: "DEEP_SUI",
+				},
+			},
+		},
+	})
+
+	mid, err := db.MidPrice(context.Background(), "DEEP_SUI")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("mid price:", mid)
+}
+```
+
+## 2. 可用网络与默认配置
+
+`ClientOptions.Network` 目前按 `mainnet/testnet` 选择默认配置：
+
+- Coins：`deepbook_v3/utils/constants.go`
+- Pools：`deepbook_v3/utils/constants.go`
+- Package IDs：`deepbook_v3/utils/constants.go`
+
+如需自定义可通过 `Options.Coins` / `Options.Pools` 覆盖。
+
+## 3. 你需要自己提供的关键对象
+
+- `Address`：你的钱包地址
+- `BalanceManagers`：现货账户管理器映射（key 由你定义）
+- `MarginManagers`：杠杆账户管理器映射（key 由你定义）
+- 管理员场景可额外配置：
+- `AdminCap`
+- `MarginAdminCap`
+- `MarginMaintainerCap`
+
+## 4. 构建交易 vs 发起交易
+
+`deepbook_v3/transactions/*` 负责向 `sui/transactions.Transaction` 写入 MoveCall。
+
+真正的签名和上链发送由上层调用方负责（例如通过你自己的 signer 和 `sui/jsonrpc` 执行）。

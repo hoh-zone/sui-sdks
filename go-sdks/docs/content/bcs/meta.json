@@ -1,0 +1,6 @@
+{
+  "root": true,
+  "title": "BCS",
+  "description": "Binary Canonical Serialization in Go",
+  "pages": ["index"]
+}

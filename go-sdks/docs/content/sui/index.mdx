@@ -1,0 +1,35 @@
+---
+title: Sui Go SDK Quick Start
+---
+
+Sui Go SDK 提供一组模块化包，用于连接 Sui 节点、构建交易、签名与执行交易。
+
+## Installation
+
+```bash
+go get github.com/sui-sdks/go-sdks
+```
+
+## Network locations
+
+| Network | Full node | Faucet |
+| --- | --- | --- |
+| localnet | `http://127.0.0.1:9000` | `http://127.0.0.1:9123/v2/gas` |
+| devnet | `https://fullnode.devnet.sui.io:443` | `https://faucet.devnet.sui.io/v2/gas` |
+| testnet | `https://fullnode.testnet.sui.io:443` | `https://faucet.testnet.sui.io/v2/gas` |
+| mainnet | `https://fullnode.mainnet.sui.io:443` | `null` |
+
+## Modules
+
+- `sui/jsonrpc`
+- `sui/grpc`
+- `sui/graphql`
+- `sui/faucet`
+- `sui/transactions`
+- `sui/cryptography`
+- `sui/keypairs/*`
+- `sui/multisig`
+- `sui/zklogin`
+- `sui/verify`
+
+更多实现范围见 `/Users/mac/work/sui-sdks/go-sdks/docs/IMPLEMENTATION_STATUS.md`。

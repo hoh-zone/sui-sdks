@@ -1,0 +1,13 @@
+---
+title: Intents
+---
+
+签名使用 intent domain separation：
+
+```go
+sig, err := signer.SignTransaction(txBytes)
+if err != nil { panic(err) }
+fmt.Println(sig.Signature)
+```
+
+个人消息签名：`SignPersonalMessage`。

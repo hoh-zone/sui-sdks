@@ -1,0 +1,48 @@
+---
+title: 管理员与治理操作
+---
+
+## 管理员合约
+
+主要入口：
+
+- `DeepBookAdminContract`
+- `MarginAdminContract`
+- `MarginMaintainerContract`
+- `GovernanceContract`
+
+## DeepBookAdmin 常见操作
+
+- 池管理：`CreatePoolAdmin`、`UnregisterPoolAdmin`
+- 版本管理：`EnableVersion`、`DisableVersion`、`UpdateAllowedVersions`
+- 稳定币：`AddStableCoin`、`RemoveStableCoin`
+- 参数：`AdjustTickSize`、`SetEwmaParams`、`EnableEwmaState`
+- 权限：`AuthorizeMarginApp`、`DeauthorizeMarginApp`
+
+`DeepBookAdminContract` 需要 `Options.AdminCap`。未配置时会触发配置错误。
+
+## Governance 操作
+
+- `Stake`
+- `Unstake`
+- `SubmitProposal`
+- `Vote`
+
+治理操作通常需要：
+
+- `poolKey`
+- `balanceManagerKey`
+- 相关 stake/proposal 参数
+
+## Margin Admin / Maintainer
+
+`margin.go` 中包含杠杆协议的管理员与维护者方法，调用前需要对应 cap：
+
+- `Options.MarginAdminCap`
+- `Options.MarginMaintainerCap`
+
+## 建议实践
+
+- 管理员密钥与普通交易账户分离。
+- 对高权限交易先 dry-run 校验参数，再执行上链。
+- 将 cap object id 放在单独配置层，不硬编码到业务代码。

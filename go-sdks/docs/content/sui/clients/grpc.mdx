@@ -1,0 +1,15 @@
+---
+title: gRPC Client
+---
+
+```go
+c, err := grpc.NewClient(grpc.ClientOptions{Network: "testnet"})
+if err != nil { panic(err) }
+defer c.Close()
+
+gasPrice, err := c.GetReferenceGasPrice(ctx)
+if err != nil { panic(err) }
+fmt.Println(gasPrice)
+```
+
+如需兼容路径，也可以注入自定义 `Transport` 或 `RPC`。

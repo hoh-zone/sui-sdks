@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pysdks"
+version = "0.1.0"
+description = "Python SDKs mirroring ts-sdks/go-sdks scope"
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [{name = "Sui SDKs"}]
+
+[project.optional-dependencies]
+grpc = [
+  "grpcio>=1.60.0",
+  "protobuf>=4.25.0",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -1,0 +1,7 @@
+---
+title: Core Client Pattern
+---
+
+交易构建与执行器依赖一个最小 `Call(ctx, method, params, out)` 接口。
+
+`jsonrpc.Client` 与 `grpc.CoreClient` 均可用于该调用模式。

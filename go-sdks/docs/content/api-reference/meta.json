@@ -1,0 +1,6 @@
+{
+  "root": true,
+  "title": "API Reference",
+  "description": "Go package API references",
+  "pages": ["index"]
+}

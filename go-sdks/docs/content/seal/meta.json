@@ -1,0 +1,6 @@
+{
+  "root": true,
+  "title": "Seal",
+  "description": "Seal cryptography flows in Go",
+  "pages": ["index"]
+}

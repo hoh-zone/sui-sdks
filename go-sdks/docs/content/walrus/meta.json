@@ -1,0 +1,6 @@
+{
+  "root": true,
+  "title": "Walrus",
+  "description": "Walrus client APIs in Go",
+  "pages": ["index"]
+}

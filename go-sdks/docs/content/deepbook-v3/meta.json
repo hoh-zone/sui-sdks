@@ -1,0 +1,15 @@
+{
+  "root": true,
+  "title": "DeepBook V3",
+  "description": "DeepBook V3 bindings in Go",
+  "pages": [
+    "index",
+    "quickstart",
+    "client-queries",
+    "trading-transactions",
+    "margin-transactions",
+    "admin-governance",
+    "types-and-scalars",
+    "errors-and-validation"
+  ]
+}

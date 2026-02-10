@@ -1,0 +1,28 @@
+---
+title: Hello Sui (Go)
+---
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+
+    "github.com/sui-sdks/go-sdks/sui/jsonrpc"
+)
+
+func main() {
+    c, err := jsonrpc.NewClient(jsonrpc.ClientOptions{Network: "testnet"})
+    if err != nil {
+        panic(err)
+    }
+
+    version, err := c.GetRPCAPIVersion(context.Background())
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Println("rpc version:", version)
+}
+```

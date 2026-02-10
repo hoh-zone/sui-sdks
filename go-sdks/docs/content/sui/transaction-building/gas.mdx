@@ -1,0 +1,12 @@
+---
+title: Gas Settings
+---
+
+```go
+tx := transactions.NewTransaction()
+tx.SetSender("0x...")
+tx.SetGasPrice(1000)
+tx.SetGasBudget(50_000_000)
+```
+
+执行器会在必要时补充默认 gas 信息。

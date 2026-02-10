@@ -1,0 +1,17 @@
+---
+title: GraphQL Client
+---
+
+```go
+g, err := graphql.NewClient(graphql.ClientOptions{
+    URL:     "https://sui-testnet.mystenlabs.com/graphql",
+    Network: "testnet",
+})
+_ = err // NewClient 当前不会返回 error
+
+resp, err := g.Query(ctx, graphql.QueryOptions{
+    Query: "query { chainIdentifier }",
+})
+if err != nil { panic(err) }
+fmt.Println(resp.Data)
+```

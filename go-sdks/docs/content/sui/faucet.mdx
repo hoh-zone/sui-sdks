@@ -1,0 +1,14 @@
+---
+title: Faucet
+---
+
+```go
+ctx := context.Background()
+host, _ := faucet.GetFaucetHost("testnet")
+res, err := faucet.RequestSuiFromFaucetV2(ctx, host, "0x...", nil)
+if err != nil {
+    // 可能是 FaucetRateLimitError
+    panic(err)
+}
+fmt.Println(len(res.CoinsSent))
+```

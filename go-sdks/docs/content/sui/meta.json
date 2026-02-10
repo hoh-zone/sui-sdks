@@ -1,0 +1,21 @@
+{
+  "root": true,
+  "title": "Sui Go SDK",
+  "description": "Go interfaces for interacting with Sui",
+  "pages": [
+    "index",
+    "install",
+    "hello-sui",
+    "faucet",
+    "clients",
+    "transaction-building",
+    "cryptography",
+    "utils",
+    "bcs",
+    "zklogin",
+    "executors",
+    "plugins",
+    "sdk-building",
+    "migrations"
+  ]
+}

@@ -1,0 +1,12 @@
+---
+title: JSON-RPC Client
+---
+
+```go
+c, err := jsonrpc.NewClient(jsonrpc.ClientOptions{Network: "testnet"})
+if err != nil { panic(err) }
+
+balance, err := c.GetBalance(ctx, "0x...", "")
+if err != nil { panic(err) }
+fmt.Println(balance["totalBalance"])
+```

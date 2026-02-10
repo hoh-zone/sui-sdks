@@ -1,0 +1,21 @@
+{
+  "meta": {
+    "suite": "rust-bcs-uleb128",
+    "version": 1,
+    "description": "Rust-style fixture vectors for ULEB128 encode/decode compatibility."
+  },
+  "vectors": [
+    { "name": "zero", "value": 0, "encoded_hex": "00", "canonical": true },
+    { "name": "one", "value": 1, "encoded_hex": "01", "canonical": true },
+    { "name": "max-single-byte", "value": 127, "encoded_hex": "7f", "canonical": true },
+    { "name": "two-bytes-min", "value": 128, "encoded_hex": "8001", "canonical": true },
+    { "name": "two-bytes-generic", "value": 300, "encoded_hex": "ac02", "canonical": true },
+    { "name": "three-bytes", "value": 16384, "encoded_hex": "808001", "canonical": true },
+    { "name": "u32-max", "value": 4294967295, "encoded_hex": "ffffffff0f", "canonical": true },
+
+    { "name": "non-canonical-zero", "encoded_hex": "8000", "error_contains": "non-canonical", "canonical": false },
+    { "name": "overflow-u32", "encoded_hex": "8080808010", "error_contains": "u32 range", "canonical": true },
+    { "name": "buffer-overflow", "encoded_hex": "80", "error_contains": "buffer overflow", "canonical": true },
+    { "name": "unterminated", "encoded_hex": "808080", "error_contains": "buffer overflow", "canonical": true }
+  ]
+}

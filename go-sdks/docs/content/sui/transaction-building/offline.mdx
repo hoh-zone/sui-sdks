@@ -1,0 +1,13 @@
+---
+title: Offline Build
+---
+
+```go
+tx := transactions.NewTransaction()
+// ... add commands
+
+serialized, err := tx.Serialize()     // JSON
+b64, err := tx.BuildBase64()          // base64(JSON)
+restored, err := transactions.TransactionFrom(b64)
+_ = restored
+```

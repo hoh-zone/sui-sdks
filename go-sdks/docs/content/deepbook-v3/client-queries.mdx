@@ -1,0 +1,81 @@
+---
+title: 客户端查询（Dry-Run）
+---
+
+`deepbook_v3.Client` 的查询方法并不是直接读索引器，而是：
+
+1. 构建一个只读交易块
+2. 调用 `sui_dryRunTransactionBlock`
+3. 从 `commandResults[].returnValues[].bcs` 提取返回值
+
+核心实现位置：`/Users/mac/work/sui-sdks/go-sdks/deepbook_v3/client.go`。
+
+## 常用查询方法
+
+- 价格与数量估算
+- `MidPrice`
+- `GetQuoteQuantityOut`
+- `GetBaseQuantityOut`
+- `GetQuantityOut`
+- `GetQuoteQuantityOutInputFee`
+- `GetBaseQuantityOutInputFee`
+- `GetQuantityOutInputFee`
+- `GetBaseQuantityIn`
+- `GetQuoteQuantityIn`
+- `GetOrderDeepRequired`
+- 订单与账户
+- `GetOrder`
+- `GetOrders`
+- `AccountOpenOrders`
+- `GetAccountOrderDetails`
+- `LockedBalance`
+- `Account`
+- 池与参数
+- `Whitelisted`
+- `VaultBalances`
+- `PoolTradeParams`
+- `PoolTradeParamsNext`
+- `PoolBookParams`
+- `GetPoolDeepPrice`
+
+## 返回值类型说明
+
+- `float64`：例如 `MidPrice`
+- `map[string]any`：例如 `GetQuantityOut`（内部已按 scalar 换算）
+- `uint64`：例如 `GetBaseQuantityIn`
+- `string`：原始 BCS 的 base64 表示（需调用方按结构解码）
+
+## 示例：获取报价
+
+```go
+ctx := context.Background()
+out, err := client.GetQuoteQuantityOut(ctx, "DEEP_SUI", 12.5)
+if err != nil {
+	panic(err)
+}
+
+fmt.Printf("base=%v quote=%v deepRequired=%v\n",
+	out["baseOut"], out["quoteOut"], out["deepRequired"])
+```
+
+## 示例：读取原始 BCS 并自行解码
+
+```go
+b64, err := client.GetOrder(ctx, "DEEP_SUI", "1")
+if err != nil {
+	panic(err)
+}
+
+raw, err := base64.StdEncoding.DecodeString(b64)
+if err != nil {
+	panic(err)
+}
+
+// raw 即 Move 返回值的 BCS bytes，按你的结构继续解析
+_ = raw
+```
+
+## 注意事项
+
+- 这些查询依赖 dry-run 的返回结构，若节点行为变化会影响解析。
+- 某些方法当前返回原始 BCS 字节（base64），不是已经结构化后的 Go struct。
