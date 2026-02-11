@@ -91,16 +91,27 @@ Implemented foundations:
       - `getObjectTyped` / `getObjectsTyped` / `multiGetObjectsTyped`
       - `getOwnedObjectsTyped` / `allOwnedObjectsTyped`
       - `getDynamicFieldObjectTyped`
+      - `getPackageTyped`
+      - `tryGetPastObjectTyped`
     - `getAllCoinsTyped` / `getCoinsTyped` / `allCoinsTyped`
     - `getBalanceTyped` / `getAllBalancesTyped`
     - `getCoinMetadataTyped` / `getTotalSupplyTyped`
+    - move methods:
+      - `getMoveFunctionArgTypesTyped`
+      - `getNormalizedMoveModulesByPackageTyped`
+      - `getNormalizedMoveModuleTyped`
+      - `getNormalizedMoveFunctionTyped`
+      - `getNormalizedMoveStructTyped`
     - dynamic/event/tx methods:
       - `getDynamicFieldsTyped` / `allDynamicFieldsTyped`
       - `getEventsByTransactionTyped`
       - `queryEventsTyped` / `allEventsTyped`
       - `queryTransactionBlocksTyped` / `allTransactionBlocksTyped`
       - `getTransactionBlockTyped` / `multiGetTransactionBlocksTyped`
-      - `tryGetPastObjectTyped`
+      - `executeTransactionBlockTyped`
+      - `signAndExecuteTransactionTyped`
+      - `waitForTransactionTyped`
+      - `getCheckpointRawTyped`
     - `getCheckpointsTyped` / `allCheckpointsTyped` / `getCheckpointTyped`
     - `resolveNameServiceNamesTyped`
     - epoch/system methods:
@@ -118,6 +129,14 @@ Implemented foundations:
     - tx simulation methods:
       - `dryRunTransactionBlockTyped`
       - `devInspectTransactionBlockTyped`
+    - misc:
+      - `discoverRPCAPITyped`
+      - `getRPCAPIVersionTyped`
+      - `getLatestCheckpointSequenceNumberTyped`
+      - `getChainIdentifierTyped`
+      - `resolveNameServiceAddressTyped`
+      - `getReferenceGasPriceTyped`
+      - `getTotalTransactionBlocksTyped`
 - `Cryptography (initial)`
   - `SignatureScheme` flags aligned with Sui convention
   - `ed25519` / `secp256k1` / `secp256r1` keypair/public key:

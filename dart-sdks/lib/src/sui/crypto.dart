@@ -82,7 +82,14 @@ class Secp256r1Keypair {
   }
 
   static Future<Secp256r1Keypair> fromPrivateKeyBytes(List<int> privateKey) async {
-    throw UnsupportedError('Secp256r1Keypair.fromPrivateKeyBytes is not implemented yet');
+    if (privateKey.length != 32) {
+      throw ArgumentError.value(privateKey.length, 'privateKey.length', 'secp256r1 private key must be 32 bytes');
+    }
+    try {
+      return Secp256r1Keypair._(await _algorithm.newKeyPairFromSeed(privateKey));
+    } on UnimplementedError {
+      throw UnsupportedError('Secp256r1 is not available in pure dart:cryptography runtime yet');
+    }
   }
 
   Future<Uint8List> sign(List<int> message) async {

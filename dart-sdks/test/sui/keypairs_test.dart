@@ -21,6 +21,10 @@ void main() {
     await expectLater(Secp256r1Keypair.generate(), throwsUnsupportedError);
   });
 
+  test('secp256r1 fromPrivateKeyBytes validates length', () async {
+    await expectLater(Secp256r1Keypair.fromPrivateKeyBytes(List.filled(31, 1)), throwsArgumentError);
+  });
+
   test('secp256k1 currently unsupported', () async {
     await expectLater(Secp256k1Keypair.generate(), throwsUnsupportedError);
   });

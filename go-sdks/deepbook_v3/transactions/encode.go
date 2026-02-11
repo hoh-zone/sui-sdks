@@ -1,12 +1,15 @@
 package transactions
 
 import (
+	"encoding/hex"
 	"math"
 	"math/big"
 	"strconv"
+	"strings"
 
 	"github.com/sui-sdks/go-sdks/bcs"
 	stx "github.com/sui-sdks/go-sdks/sui/transactions"
+	suiutils "github.com/sui-sdks/go-sdks/sui/utils"
 )
 
 func pureBool(tx *stx.Transaction, v bool) stx.Argument {
@@ -25,6 +28,12 @@ func pureU64(tx *stx.Transaction, v uint64) stx.Argument {
 	w := bcs.NewWriter(nil)
 	_ = w.Write64(v)
 	return tx.PureBytes(w.ToBytes())
+}
+
+func pureAddress(tx *stx.Transaction, addr string) stx.Argument {
+	norm := suiutils.NormalizeSuiAddress(addr)
+	raw, _ := hex.DecodeString(strings.TrimPrefix(norm, "0x"))
+	return tx.PureBytes(raw)
 }
 
 func pureU128String(tx *stx.Transaction, s string) stx.Argument {

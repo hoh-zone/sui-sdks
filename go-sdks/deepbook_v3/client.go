@@ -255,6 +255,10 @@ func (c *Client) GetPoolIDByAssets(ctx context.Context, baseType, quoteType stri
 	return readReturnBCSBase64(res, 0, 0)
 }
 
+func (c *Client) GetPoolIdByAssets(ctx context.Context, baseType, quoteType string) (string, error) {
+	return c.GetPoolIDByAssets(ctx, baseType, quoteType)
+}
+
 func (c *Client) PoolTradeParams(ctx context.Context, poolKey string) (string, error) {
 	tx := stx.NewTransaction()
 	c.DeepBook.PoolTradeParams(tx, poolKey)
@@ -312,7 +316,116 @@ func (c *Client) BalanceManagerReferralOwner(ctx context.Context, referral strin
 	if err != nil {
 		return "", err
 	}
-	return readReturnBCSBase64(res, 0, 0)
+	return readAddress(res, 0, 0)
+}
+
+func (c *Client) BalanceManagerReferralPoolID(ctx context.Context, referral string) (string, error) {
+	tx := stx.NewTransaction()
+	c.BalanceManager.BalanceManagerReferralPoolID(tx, referral)
+	res, err := c.simulate(ctx, tx)
+	if err != nil {
+		return "", err
+	}
+	return readAddress(res, 0, 0)
+}
+
+func (c *Client) BalanceManagerReferralPoolId(ctx context.Context, referral string) (string, error) {
+	return c.BalanceManagerReferralPoolID(ctx, referral)
+}
+
+func (c *Client) GetBalanceManagerReferralID(ctx context.Context, managerKey, poolKey string) (string, error) {
+	tx := stx.NewTransaction()
+	c.BalanceManager.GetBalanceManagerReferralID(tx, managerKey, poolKey)
+	res, err := c.simulate(ctx, tx)
+	if err != nil {
+		return "", err
+	}
+	addr, ok, err := readOptionAddress(res, 0, 0)
+	if err != nil || !ok {
+		return "", err
+	}
+	return addr, nil
+}
+
+func (c *Client) GetBalanceManagerReferralId(ctx context.Context, managerKey, poolKey string) (string, error) {
+	return c.GetBalanceManagerReferralID(ctx, managerKey, poolKey)
+}
+
+func (c *Client) GetBalanceManagerIDs(ctx context.Context, owner string) ([]string, error) {
+	tx := stx.NewTransaction()
+	c.DeepBook.GetBalanceManagerIDs(tx, owner)
+	res, err := c.simulate(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
+	return readVecAddress(res, 0, 0)
+}
+
+func (c *Client) GetBalanceManagerIds(ctx context.Context, owner string) ([]string, error) {
+	return c.GetBalanceManagerIDs(ctx, owner)
+}
+
+func (c *Client) GetPoolReferralBalances(ctx context.Context, poolKey, referral string) (map[string]any, error) {
+	tx := stx.NewTransaction()
+	pool := c.config.GetPool(poolKey)
+	baseScalar := c.config.GetCoin(pool.BaseCoin).Scalar
+	quoteScalar := c.config.GetCoin(pool.QuoteCoin).Scalar
+	c.DeepBook.GetPoolReferralBalances(tx, poolKey, referral)
+	res, err := c.simulate(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
+	baseBal, err := readU64(res, 0, 0)
+	if err != nil {
+		return nil, err
+	}
+	quoteBal, err := readU64(res, 0, 1)
+	if err != nil {
+		return nil, err
+	}
+	deepBal, err := readU64(res, 0, 2)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{
+		"base":  float64(baseBal) / baseScalar,
+		"quote": float64(quoteBal) / quoteScalar,
+		"deep":  float64(deepBal) / utils.DeepScalar,
+	}, nil
+}
+
+func (c *Client) PoolReferralMultiplier(ctx context.Context, poolKey, referral string) (float64, error) {
+	tx := stx.NewTransaction()
+	c.DeepBook.PoolReferralMultiplier(tx, poolKey, referral)
+	res, err := c.simulate(ctx, tx)
+	if err != nil {
+		return 0, err
+	}
+	raw, err := readU64(res, 0, 0)
+	if err != nil {
+		return 0, err
+	}
+	return float64(raw) / utils.FloatScalar, nil
+}
+
+func (c *Client) StablePool(ctx context.Context, poolKey string) (bool, error) {
+	tx := stx.NewTransaction()
+	c.DeepBook.StablePool(tx, poolKey)
+	res, err := c.simulate(ctx, tx)
+	if err != nil {
+		return false, err
+	}
+	return readBool(res, 0, 0)
+}
+
+func (c *Client) RegisteredPool(ctx context.Context, poolKey string) (bool, error) {
+	tx := stx.NewTransaction()
+	c.DeepBook.RegisteredPool(tx, poolKey)
+	res, err := c.simulate(ctx, tx)
+	if err != nil {
+		return false, err
+	}
+	return readBool(res, 0, 0)
 }
 
 func (c *Client) GetPriceInfoObjectAge(_ context.Context, coinKey string) (int64, error) {
@@ -416,6 +529,179 @@ func (c *Client) PoolTradeParamsNext(ctx context.Context, poolKey string) (strin
 	return readReturnBCSBase64(res, 0, 0)
 }
 
+func (c *Client) AccountExists(ctx context.Context, poolKey, managerKey string) (bool, error) {
+	tx := stx.NewTransaction()
+	c.DeepBook.AccountExists(tx, poolKey, managerKey)
+	res, err := c.simulate(ctx, tx)
+	if err != nil {
+		return false, err
+	}
+	return readBool(res, 0, 0)
+}
+
+func (c *Client) Quorum(ctx context.Context, poolKey string) (float64, error) {
+	tx := stx.NewTransaction()
+	c.DeepBook.Quorum(tx, poolKey)
+	res, err := c.simulate(ctx, tx)
+	if err != nil {
+		return 0, err
+	}
+	raw, err := readU64(res, 0, 0)
+	if err != nil {
+		return 0, err
+	}
+	return float64(raw) / utils.DeepScalar, nil
+}
+
+func (c *Client) PoolID(ctx context.Context, poolKey string) (string, error) {
+	tx := stx.NewTransaction()
+	c.DeepBook.PoolID(tx, poolKey)
+	res, err := c.simulate(ctx, tx)
+	if err != nil {
+		return "", err
+	}
+	return readAddress(res, 0, 0)
+}
+
+func (c *Client) PoolId(ctx context.Context, poolKey string) (string, error) {
+	return c.PoolID(ctx, poolKey)
+}
+
+func (c *Client) CanPlaceLimitOrder(ctx context.Context, params types.CanPlaceLimitOrderParams) (bool, error) {
+	tx := stx.NewTransaction()
+	c.DeepBook.CanPlaceLimitOrder(tx, params)
+	res, err := c.simulate(ctx, tx)
+	if err != nil {
+		return false, err
+	}
+	return readBool(res, 0, 0)
+}
+
+func (c *Client) CanPlaceMarketOrder(ctx context.Context, params types.CanPlaceMarketOrderParams) (bool, error) {
+	tx := stx.NewTransaction()
+	c.DeepBook.CanPlaceMarketOrder(tx, params)
+	res, err := c.simulate(ctx, tx)
+	if err != nil {
+		return false, err
+	}
+	return readBool(res, 0, 0)
+}
+
+func (c *Client) CheckMarketOrderParams(ctx context.Context, poolKey string, quantity float64) (bool, error) {
+	tx := stx.NewTransaction()
+	c.DeepBook.CheckMarketOrderParams(tx, poolKey, quantity)
+	res, err := c.simulate(ctx, tx)
+	if err != nil {
+		return false, err
+	}
+	return readBool(res, 0, 0)
+}
+
+func (c *Client) CheckLimitOrderParams(ctx context.Context, poolKey string, price, quantity float64, expireTimestamp uint64) (bool, error) {
+	tx := stx.NewTransaction()
+	c.DeepBook.CheckLimitOrderParams(tx, poolKey, price, quantity, expireTimestamp)
+	res, err := c.simulate(ctx, tx)
+	if err != nil {
+		return false, err
+	}
+	return readBool(res, 0, 0)
+}
+
+func (c *Client) GetMarginPoolID(ctx context.Context, coinKey string) (string, error) {
+	tx := stx.NewTransaction()
+	c.MarginPool.GetID(tx, coinKey)
+	res, err := c.simulate(ctx, tx)
+	if err != nil {
+		return "", err
+	}
+	return readAddress(res, 0, 0)
+}
+
+func (c *Client) GetMarginPoolId(ctx context.Context, coinKey string) (string, error) {
+	return c.GetMarginPoolID(ctx, coinKey)
+}
+
+func (c *Client) IsPoolEnabledForMargin(ctx context.Context, poolKey string) (bool, error) {
+	tx := stx.NewTransaction()
+	c.MarginRegistry.PoolEnabled(tx, poolKey)
+	res, err := c.simulate(ctx, tx)
+	if err != nil {
+		return false, err
+	}
+	return readBool(res, 0, 0)
+}
+
+func (c *Client) GetMarginManagerIDsForOwner(ctx context.Context, owner string) ([]string, error) {
+	tx := stx.NewTransaction()
+	c.MarginRegistry.GetMarginManagerIDs(tx, owner)
+	res, err := c.simulate(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
+	return readVecAddress(res, 0, 0)
+}
+
+func (c *Client) GetMarginManagerIdsForOwner(ctx context.Context, owner string) ([]string, error) {
+	return c.GetMarginManagerIDsForOwner(ctx, owner)
+}
+
+func (c *Client) GetConditionalOrderIDs(ctx context.Context, marginManagerKey string) ([]string, error) {
+	manager := c.config.GetMarginManager(marginManagerKey)
+	tx := stx.NewTransaction()
+	c.MarginTPSL.ConditionalOrderIDs(tx, manager.PoolKey, manager.Address)
+	res, err := c.simulate(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
+	return readVecU64String(res, 0, 0)
+}
+
+func (c *Client) GetConditionalOrderIds(ctx context.Context, marginManagerKey string) ([]string, error) {
+	return c.GetConditionalOrderIDs(ctx, marginManagerKey)
+}
+
+func (c *Client) GetLowestTriggerAbovePrice(ctx context.Context, marginManagerKey string) (uint64, error) {
+	manager := c.config.GetMarginManager(marginManagerKey)
+	tx := stx.NewTransaction()
+	c.MarginTPSL.LowestTriggerAbovePrice(tx, manager.PoolKey, manager.Address)
+	res, err := c.simulate(ctx, tx)
+	if err != nil {
+		return 0, err
+	}
+	return readU64(res, 0, 0)
+}
+
+func (c *Client) GetHighestTriggerBelowPrice(ctx context.Context, marginManagerKey string) (uint64, error) {
+	manager := c.config.GetMarginManager(marginManagerKey)
+	tx := stx.NewTransaction()
+	c.MarginTPSL.HighestTriggerBelowPrice(tx, manager.PoolKey, manager.Address)
+	res, err := c.simulate(ctx, tx)
+	if err != nil {
+		return 0, err
+	}
+	return readU64(res, 0, 0)
+}
+
+func (c *Client) GetLevel2Range(ctx context.Context, poolKey string, priceLow, priceHigh float64, isBid bool) (string, error) {
+	tx := stx.NewTransaction()
+	c.DeepBook.GetLevel2Range(tx, poolKey, priceLow, priceHigh, isBid)
+	res, err := c.simulate(ctx, tx)
+	if err != nil {
+		return "", err
+	}
+	return readReturnBCSBase64(res, 0, 0)
+}
+
+func (c *Client) GetLevel2TicksFromMid(ctx context.Context, poolKey string, ticks uint64) (string, error) {
+	tx := stx.NewTransaction()
+	c.DeepBook.GetLevel2TicksFromMid(tx, poolKey, ticks)
+	res, err := c.simulate(ctx, tx)
+	if err != nil {
+		return "", err
+	}
+	return readReturnBCSBase64(res, 0, 0)
+}
+
 func (c *Client) GetPythClient(pythStateID, wormholeStateID string) *pyth.SuiPythClient {
 	return pyth.NewSuiPythClient(c.client, pythStateID, wormholeStateID)
 }
@@ -437,6 +723,92 @@ func readU64(res map[string]any, cmd, ret int) (uint64, error) {
 	}
 	reader := bcs.NewReader(bytes)
 	return reader.Read64()
+}
+
+func readBool(res map[string]any, cmd, ret int) (bool, error) {
+	bytes, err := extractReturnBCS(res, cmd, ret)
+	if err != nil {
+		return false, err
+	}
+	return len(bytes) > 0 && bytes[0] == 1, nil
+}
+
+func readAddress(res map[string]any, cmd, ret int) (string, error) {
+	bytes, err := extractReturnBCS(res, cmd, ret)
+	if err != nil {
+		return "", err
+	}
+	reader := bcs.NewReader(bytes)
+	addrBytes, err := reader.ReadBytes(32)
+	if err != nil {
+		return "", err
+	}
+	return suiutils.NormalizeSuiAddress(fmt.Sprintf("0x%x", addrBytes)), nil
+}
+
+func readOptionAddress(res map[string]any, cmd, ret int) (string, bool, error) {
+	bytes, err := extractReturnBCS(res, cmd, ret)
+	if err != nil {
+		return "", false, err
+	}
+	reader := bcs.NewReader(bytes)
+	tag, err := reader.Read8()
+	if err != nil {
+		return "", false, err
+	}
+	if tag == 0 {
+		return "", false, nil
+	}
+	if tag != 1 {
+		return "", false, fmt.Errorf("invalid option tag: %d", tag)
+	}
+	addrBytes, err := reader.ReadBytes(32)
+	if err != nil {
+		return "", false, err
+	}
+	return suiutils.NormalizeSuiAddress(fmt.Sprintf("0x%x", addrBytes)), true, nil
+}
+
+func readVecAddress(res map[string]any, cmd, ret int) ([]string, error) {
+	bytes, err := extractReturnBCS(res, cmd, ret)
+	if err != nil {
+		return nil, err
+	}
+	reader := bcs.NewReader(bytes)
+	n, err := reader.ReadULEB()
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, n)
+	for i := uint64(0); i < n; i++ {
+		addrBytes, err := reader.ReadBytes(32)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, suiutils.NormalizeSuiAddress(fmt.Sprintf("0x%x", addrBytes)))
+	}
+	return out, nil
+}
+
+func readVecU64String(res map[string]any, cmd, ret int) ([]string, error) {
+	bytes, err := extractReturnBCS(res, cmd, ret)
+	if err != nil {
+		return nil, err
+	}
+	reader := bcs.NewReader(bytes)
+	n, err := reader.ReadULEB()
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, n)
+	for i := uint64(0); i < n; i++ {
+		v, err := reader.Read64()
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, fmt.Sprintf("%d", v))
+	}
+	return out, nil
 }
 
 func readReturnBCSBase64(res map[string]any, cmd, ret int) (string, error) {

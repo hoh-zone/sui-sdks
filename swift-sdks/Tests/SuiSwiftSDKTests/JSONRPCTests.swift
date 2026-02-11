@@ -75,6 +75,60 @@ final class JSONRPCTests: XCTestCase {
         let gasPrice = try await client.getReferenceGasPrice()
         XCTAssertEqual(gasPrice, "1000")
     }
+
+    func testDevInspectTransactionBlockCall() async throws {
+        let session = makeMockedSession {
+            let payload = try XCTUnwrap($0.httpBody)
+            let body = try JSONSerialization.jsonObject(with: payload) as? [String: Any]
+            let method = body?["method"] as? String
+            XCTAssertEqual(method, "sui_devInspectTransactionBlock")
+            return (200, ["jsonrpc": "2.0", "id": 1, "result": ["effects": ["status": "success"]]])
+        }
+
+        let client = SuiClient(
+            endpoint: URL(string: "https://example.com")!,
+            transport: HTTPJSONRPCTransport(url: URL(string: "https://example.com")!, session: session)
+        )
+
+        let response = try await client.devInspectTransactionBlock(
+            sender: "0x2",
+            transactionBlock: Data([0x1, 0x2]).base64EncodedString()
+        )
+        let effects = try XCTUnwrap(response["effects"] as? [String: Any])
+        XCTAssertEqual(effects["status"] as? String, "success")
+    }
+
+    func testGetOwnedObjectsTypedDecode() async throws {
+        let session = makeMockedSession {
+            let payload = try XCTUnwrap($0.httpBody)
+            let body = try JSONSerialization.jsonObject(with: payload) as? [String: Any]
+            let method = body?["method"] as? String
+            XCTAssertEqual(method, "suix_getOwnedObjects")
+            return (
+                200,
+                [
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "result": [
+                        "data": [
+                            ["data": ["objectId": "0xabc"]]
+                        ],
+                        "nextCursor": NSNull(),
+                        "hasNextPage": false,
+                    ],
+                ]
+            )
+        }
+
+        let client = SuiClient(
+            endpoint: URL(string: "https://example.com")!,
+            transport: HTTPJSONRPCTransport(url: URL(string: "https://example.com")!, session: session)
+        )
+
+        let page = try await client.getOwnedObjectsTyped(owner: "0x2")
+        XCTAssertEqual(page.data.count, 1)
+        XCTAssertEqual(page.hasNextPage, false)
+    }
 }
 
 private typealias MockResponse = (status: Int, json: Any)

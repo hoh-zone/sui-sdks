@@ -5,9 +5,55 @@ public enum SuiTypedDecodingError: Error, Equatable {
 }
 
 public extension SuiClient {
+    func discoverRPCAPITyped() async throws -> SuiJSONObject {
+        let raw = try await discoverRPCAPI()
+        return try decodeJSON(raw, as: SuiJSONObject.self)
+    }
+
+    func getRPCAPIVersionTyped() async throws -> String? {
+        try await getRPCAPIVersion()
+    }
+
     func getObjectTyped(objectID: String, options: [String: Any] = [:]) async throws -> SuiObjectResponse {
         let raw = try await getObject(objectID: objectID, options: options)
         return try decodeJSON(raw, as: SuiObjectResponse.self)
+    }
+
+    func getMoveFunctionArgTypesTyped(
+        package packageID: String,
+        module: String,
+        function: String
+    ) async throws -> [SuiJSONObject] {
+        let raw = try await getMoveFunctionArgTypes(package: packageID, module: module, function: function)
+        return try decodeJSON(raw, as: [SuiJSONObject].self)
+    }
+
+    func getNormalizedMoveModulesByPackageTyped(package packageID: String) async throws -> SuiJSONObject {
+        let raw = try await getNormalizedMoveModulesByPackage(package: packageID)
+        return try decodeJSON(raw, as: SuiJSONObject.self)
+    }
+
+    func getNormalizedMoveModuleTyped(package packageID: String, module: String) async throws -> SuiJSONObject {
+        let raw = try await getNormalizedMoveModule(package: packageID, module: module)
+        return try decodeJSON(raw, as: SuiJSONObject.self)
+    }
+
+    func getNormalizedMoveFunctionTyped(
+        package packageID: String,
+        module: String,
+        function: String
+    ) async throws -> SuiJSONObject {
+        let raw = try await getNormalizedMoveFunction(package: packageID, module: module, function: function)
+        return try decodeJSON(raw, as: SuiJSONObject.self)
+    }
+
+    func getNormalizedMoveStructTyped(
+        package packageID: String,
+        module: String,
+        struct structName: String
+    ) async throws -> SuiJSONObject {
+        let raw = try await getNormalizedMoveStruct(package: packageID, module: module, struct: structName)
+        return try decodeJSON(raw, as: SuiJSONObject.self)
     }
 
     func getObjectsTyped(objectIDs: [String], options: [String: Any] = [:]) async throws -> [SuiObjectResponse] {
@@ -146,6 +192,87 @@ public extension SuiClient {
         return try decodeJSON(raw, as: SuiJSONObject.self)
     }
 
+    func executeTransactionBlockTyped(
+        transactionBlock: String,
+        signatures: [String],
+        options: [String: Any] = [:],
+        requestType: String? = nil
+    ) async throws -> SuiJSONObject {
+        let raw = try await executeTransactionBlock(
+            transactionBlock: transactionBlock,
+            signatures: signatures,
+            options: options,
+            requestType: requestType
+        )
+        return try decodeJSON(raw, as: SuiJSONObject.self)
+    }
+
+    func executeTransactionBlockTyped(
+        transactionBlockBytes: [UInt8],
+        signatures: [String],
+        options: [String: Any] = [:],
+        requestType: String? = nil
+    ) async throws -> SuiJSONObject {
+        let raw = try await executeTransactionBlock(
+            transactionBlockBytes: transactionBlockBytes,
+            signatures: signatures,
+            options: options,
+            requestType: requestType
+        )
+        return try decodeJSON(raw, as: SuiJSONObject.self)
+    }
+
+    func signAndExecuteTransactionTyped(
+        transactionBlockBytes: [UInt8],
+        signer: SuiSigner,
+        options: [String: Any] = [:],
+        requestType: String? = nil,
+        waitForConfirmation: Bool = false,
+        waitTimeoutMs: Int = 60_000,
+        waitPollIntervalMs: Int = 2_000
+    ) async throws -> SuiJSONObject {
+        let raw = try await signAndExecuteTransaction(
+            transactionBlockBytes: transactionBlockBytes,
+            signer: signer,
+            options: options,
+            requestType: requestType,
+            waitForConfirmation: waitForConfirmation,
+            waitTimeoutMs: waitTimeoutMs,
+            waitPollIntervalMs: waitPollIntervalMs
+        )
+        return try decodeJSON(raw, as: SuiJSONObject.self)
+    }
+
+    func signAndExecuteTransactionTyped(
+        transactionBlockBase64: String,
+        signer: SuiSigner,
+        options: [String: Any] = [:],
+        requestType: String? = nil,
+        waitForConfirmation: Bool = false,
+        waitTimeoutMs: Int = 60_000,
+        waitPollIntervalMs: Int = 2_000
+    ) async throws -> SuiJSONObject {
+        let raw = try await signAndExecuteTransaction(
+            transactionBlockBase64: transactionBlockBase64,
+            signer: signer,
+            options: options,
+            requestType: requestType,
+            waitForConfirmation: waitForConfirmation,
+            waitTimeoutMs: waitTimeoutMs,
+            waitPollIntervalMs: waitPollIntervalMs
+        )
+        return try decodeJSON(raw, as: SuiJSONObject.self)
+    }
+
+    func getCheckpointRawTyped(checkpointID: String) async throws -> SuiJSONObject {
+        let raw = try await getCheckpoint(checkpointID: checkpointID)
+        return try decodeJSON(raw, as: SuiJSONObject.self)
+    }
+
+    func getLatestCheckpointSequenceNumberTyped() async throws -> String {
+        try await getLatestCheckpointSequenceNumber()
+    }
+
     func getEpochMetricsTyped(
         cursor: String? = nil,
         limit: Int? = nil,
@@ -168,6 +295,11 @@ public extension SuiClient {
     func getLatestSuiSystemStateTyped() async throws -> SuiJSONObject {
         let raw = try await getLatestSuiSystemState()
         return try decodeJSON(raw, as: SuiJSONObject.self)
+    }
+
+    func getPackageTyped(packageID: String) async throws -> SuiObjectResponse {
+        let raw = try await getPackage(packageID: packageID)
+        return try decodeJSON(raw, as: SuiObjectResponse.self)
     }
 
     func getCommitteeInfoTyped(epoch: String? = nil) async throws -> SuiJSONObject {
@@ -216,6 +348,10 @@ public extension SuiClient {
         return try decodeJSON(raw, as: SuiJSONObject.self)
     }
 
+    func getChainIdentifierTyped() async throws -> String {
+        try await getChainIdentifier()
+    }
+
     func getStakesTyped(owner: String) async throws -> [SuiJSONObject] {
         let raw = try await getStakes(owner: owner)
         return try decodeJSON(raw, as: [SuiJSONObject].self)
@@ -229,6 +365,10 @@ public extension SuiClient {
     func getProtocolConfigTyped(version: String? = nil) async throws -> SuiJSONObject {
         let raw = try await getProtocolConfig(version: version)
         return try decodeJSON(raw, as: SuiJSONObject.self)
+    }
+
+    func resolveNameServiceAddressTyped(name: String) async throws -> String? {
+        try await resolveNameServiceAddress(name: name)
     }
 
     func verifyZkLoginSignatureTyped(
@@ -261,8 +401,46 @@ public extension SuiClient {
         return try decodeJSON(raw, as: SuiJSONObject.self)
     }
 
+    func devInspectTransactionBlockTyped(
+        sender: String,
+        transactionBlockBytes: [UInt8],
+        gasPrice: String? = nil,
+        epoch: String? = nil
+    ) async throws -> SuiJSONObject {
+        let raw = try await devInspectTransactionBlock(
+            sender: sender,
+            transactionBlockBytes: transactionBlockBytes,
+            gasPrice: gasPrice,
+            epoch: epoch
+        )
+        return try decodeJSON(raw, as: SuiJSONObject.self)
+    }
+
     func dryRunTransactionBlockTyped(txBytesBase64: String) async throws -> SuiJSONObject {
         let raw = try await dryRunTransactionBlock(txBytesBase64: txBytesBase64)
+        return try decodeJSON(raw, as: SuiJSONObject.self)
+    }
+
+    func getReferenceGasPriceTyped() async throws -> String {
+        try await getReferenceGasPrice()
+    }
+
+    func getTotalTransactionBlocksTyped() async throws -> String {
+        try await getTotalTransactionBlocks()
+    }
+
+    func waitForTransactionTyped(
+        digest: String,
+        options: [String: Any] = [:],
+        timeoutMs: Int = 60_000,
+        pollIntervalMs: Int = 2_000
+    ) async throws -> SuiJSONObject {
+        let raw = try await waitForTransaction(
+            digest: digest,
+            options: options,
+            timeoutMs: timeoutMs,
+            pollIntervalMs: pollIntervalMs
+        )
         return try decodeJSON(raw, as: SuiJSONObject.self)
     }
 

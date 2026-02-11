@@ -71,11 +71,18 @@ void main() {
       {'data': {'ok': true}},
       {'data': {'ok': true}},
       {'data': {'ok': true}},
+      {'data': {'ok': true}},
+      {'data': {'ok': true}},
+      {'data': {'ok': true}},
+      {'data': {'ok': true}},
+      {'data': {'ok': true}},
+      {'data': {'ok': true}},
     ]);
     final client = GraphQlClient(endpoint: 'https://example.invalid', transport: transport);
 
     await client.getBalance(owner: '0xabc');
     await client.getCoins(owner: '0xabc', cursor: 'c1', limit: 10);
+    await client.getGas(owner: '0xabc', cursor: 'g1', limit: 12);
     await client.getOwnedObjects(owner: '0xabc', cursor: 'c2', limit: 8);
     await client.getDynamicFields(parentId: '0xparent', cursor: 'd1', limit: 3);
     await client.getTransactionBlock(digest: 'tx1');
@@ -102,6 +109,11 @@ void main() {
     await client.getTotalSupply(coinType: '0x2::sui::SUI');
     await client.resolveNameServiceAddress(name: 'alice.sui');
     await client.resolveNameServiceNames(address: '0xabc');
+    await client.getCommitteeInfo(epoch: 3, cursor: 'v1', limit: 11);
+    await client.getStakes(owner: '0xabc', cursor: 's1', limit: 6);
+    await client.getStakesByIds(stakedSuiIds: const ['0xstake1', '0xstake2']);
+    await client.discoverRpcApi();
+    await client.dryRun(txBytesB64: 'AA==', includeCommandResults: true);
 
     expect(transport.calls[0].$1.contains('query getBalance'), isTrue);
     expect(transport.calls[0].$2, {'owner': '0xabc', 'coinType': '0x2::sui::SUI'});
@@ -109,79 +121,109 @@ void main() {
     expect(transport.calls[1].$2?['owner'], '0xabc');
     expect(transport.calls[1].$2?['cursor'], 'c1');
     expect(transport.calls[1].$2?['first'], 10);
-    expect(transport.calls[2].$1.contains('query getOwnedObjects'), isTrue);
-    expect(transport.calls[3].$1.contains('query getDynamicFields'), isTrue);
-    expect(transport.calls[4].$1.contains('query getTransactionBlock'), isTrue);
-    expect(transport.calls[4].$2, {'digest': 'tx1'});
-    expect(transport.calls[5].$1.contains('mutation executeTransaction'), isTrue);
-    expect(transport.calls[5].$2, {
+    expect(transport.calls[2].$1.contains('query getCoins'), isTrue);
+    expect(transport.calls[2].$2?['owner'], '0xabc');
+    expect(transport.calls[2].$2?['cursor'], 'g1');
+    expect(transport.calls[2].$2?['first'], 12);
+    expect(transport.calls[3].$1.contains('query getOwnedObjects'), isTrue);
+    expect(transport.calls[4].$1.contains('query getDynamicFields'), isTrue);
+    expect(transport.calls[5].$1.contains('query getTransactionBlock'), isTrue);
+    expect(transport.calls[5].$2, {'digest': 'tx1'});
+    expect(transport.calls[6].$1.contains('mutation executeTransaction'), isTrue);
+    expect(transport.calls[6].$2, {
       'transactionDataBcs': 'AA==',
       'signatures': ['sig'],
     });
-    expect(transport.calls[6].$1.contains('query getChainIdentifier'), isTrue);
-    expect(transport.calls[7].$1.contains('query getReferenceGasPrice'), isTrue);
-    expect(transport.calls[8].$1.contains('query getAllBalances'), isTrue);
-    expect(transport.calls[8].$2, {'owner': '0xabc', 'limit': 4, 'cursor': 'b1'});
-    expect(transport.calls[9].$1.contains('query getCoinMetadata'), isTrue);
-    expect(transport.calls[9].$2, {'coinType': '0x2::sui::SUI'});
-    expect(transport.calls[10].$1.contains('query defaultSuinsName'), isTrue);
-    expect(transport.calls[10].$2, {'address': '0xabc'});
-    expect(transport.calls[11].$1.contains('query getObject'), isTrue);
-    expect(transport.calls[11].$2, {'objectId': '0xobj'});
-    expect(transport.calls[12].$1.contains('query multiGetObjects'), isTrue);
-    expect(transport.calls[12].$2, {
+    expect(transport.calls[7].$1.contains('query getChainIdentifier'), isTrue);
+    expect(transport.calls[8].$1.contains('query getReferenceGasPrice'), isTrue);
+    expect(transport.calls[9].$1.contains('query getAllBalances'), isTrue);
+    expect(transport.calls[9].$2, {'owner': '0xabc', 'limit': 4, 'cursor': 'b1'});
+    expect(transport.calls[10].$1.contains('query getCoinMetadata'), isTrue);
+    expect(transport.calls[10].$2, {'coinType': '0x2::sui::SUI'});
+    expect(transport.calls[11].$1.contains('query defaultSuinsName'), isTrue);
+    expect(transport.calls[11].$2, {'address': '0xabc'});
+    expect(transport.calls[12].$1.contains('query getObject'), isTrue);
+    expect(transport.calls[12].$2, {'objectId': '0xobj'});
+    expect(transport.calls[13].$1.contains('query multiGetObjects'), isTrue);
+    expect(transport.calls[13].$2, {
       'objectKeys': [
         {'address': '0x1'},
         {'address': '0x2'}
       ]
     });
-    expect(transport.calls[13].$1.contains('query getEventsByTransaction'), isTrue);
-    expect(transport.calls[13].$2, {'digest': 'tx1', 'first': 50});
-    expect(transport.calls[14].$1.contains('query getMoveFunction'), isTrue);
-    expect(transport.calls[14].$2, {
+    expect(transport.calls[14].$1.contains('query getEventsByTransaction'), isTrue);
+    expect(transport.calls[14].$2, {'digest': 'tx1', 'first': 50});
+    expect(transport.calls[15].$1.contains('query getMoveFunction'), isTrue);
+    expect(transport.calls[15].$2, {
       'package': '0x2',
       'module': 'coin',
       'function': 'balance',
     });
-    expect(transport.calls[15].$1.contains('query queryTransactionBlocks'), isTrue);
-    expect(transport.calls[15].$2, {
+    expect(transport.calls[16].$1.contains('query queryTransactionBlocks'), isTrue);
+    expect(transport.calls[16].$2, {
       'first': 7,
       'cursor': 't1',
       'filter': {'kind': 'ProgrammableTransaction'}
     });
-    expect(transport.calls[16].$1.contains('query queryEvents'), isTrue);
-    expect(transport.calls[16].$2, {
+    expect(transport.calls[17].$1.contains('query queryEvents'), isTrue);
+    expect(transport.calls[17].$2, {
       'first': 9,
       'cursor': 'e1',
       'filter': {'sender': '0xabc'}
     });
-    expect(transport.calls[17].$1.contains('query simulateTransaction'), isTrue);
-    expect(transport.calls[17].$2, {
+    expect(transport.calls[18].$1.contains('query simulateTransaction'), isTrue);
+    expect(transport.calls[18].$2, {
       'transaction': {'tx': 'json'},
       'doGasSelection': false,
       'checksEnabled': true,
       'includeCommandResults': true,
     });
-    expect(transport.calls[18].$1.contains('query resolveTransaction'), isTrue);
-    expect(transport.calls[18].$2, {
+    expect(transport.calls[19].$1.contains('query resolveTransaction'), isTrue);
+    expect(transport.calls[19].$2, {
       'transaction': {'tx': 'json'},
       'doGasSelection': true,
     });
-    expect(transport.calls[19].$1.contains('query getCheckpoint'), isTrue);
-    expect(transport.calls[19].$2, {'sequenceNumber': 7});
-    expect(transport.calls[20].$1.contains('query getCheckpoints'), isTrue);
-    expect(transport.calls[20].$2, {'first': 5, 'cursor': 'k1', 'filter': null});
-    expect(transport.calls[21].$1.contains('query getLatestCheckpointSequenceNumber'), isTrue);
-    expect(transport.calls[22].$1.contains('query getProtocolConfig'), isTrue);
-    expect(transport.calls[22].$2, {'version': 6});
-    expect(transport.calls[23].$1.contains('query getCurrentSystemState'), isTrue);
+    expect(transport.calls[20].$1.contains('query getCheckpoint'), isTrue);
+    expect(transport.calls[20].$2, {'sequenceNumber': 7});
+    expect(transport.calls[21].$1.contains('query getCheckpoints'), isTrue);
+    expect(transport.calls[21].$2, {'first': 5, 'cursor': 'k1', 'filter': null});
+    expect(transport.calls[22].$1.contains('query getLatestCheckpointSequenceNumber'), isTrue);
+    expect(transport.calls[23].$1.contains('query getProtocolConfig'), isTrue);
+    expect(transport.calls[23].$2, {'version': 6});
     expect(transport.calls[24].$1.contains('query getCurrentSystemState'), isTrue);
-    expect(transport.calls[25].$1.contains('query getTotalSupply'), isTrue);
-    expect(transport.calls[25].$2, {'coinType': '0x2::sui::SUI'});
-    expect(transport.calls[26].$1.contains('query resolveNameServiceAddress'), isTrue);
-    expect(transport.calls[26].$2, {'name': 'alice.sui'});
-    expect(transport.calls[27].$1.contains('query resolveNameServiceNames'), isTrue);
-    expect(transport.calls[27].$2, {'address': '0xabc'});
+    expect(transport.calls[25].$1.contains('query getCurrentSystemState'), isTrue);
+    expect(transport.calls[26].$1.contains('query getTotalSupply'), isTrue);
+    expect(transport.calls[26].$2, {'coinType': '0x2::sui::SUI'});
+    expect(transport.calls[27].$1.contains('query resolveNameServiceAddress'), isTrue);
+    expect(transport.calls[27].$2, {'name': 'alice.sui'});
+    expect(transport.calls[28].$1.contains('query resolveNameServiceNames'), isTrue);
+    expect(transport.calls[28].$2, {'address': '0xabc'});
+    expect(transport.calls[29].$1.contains('query getCommitteeInfo'), isTrue);
+    expect(transport.calls[29].$2, {'epochId': 3, 'first': 11, 'cursor': 'v1'});
+    expect(transport.calls[30].$1.contains('query getOwnedObjects'), isTrue);
+    expect(transport.calls[30].$2, {
+      'owner': '0xabc',
+      'limit': 6,
+      'cursor': 's1',
+      'filter': {'type': '0x3::staking_pool::StakedSui'}
+    });
+    expect(transport.calls[31].$1.contains('query multiGetObjects'), isTrue);
+    expect(transport.calls[31].$2, {
+      'objectKeys': [
+        {'address': '0xstake1'},
+        {'address': '0xstake2'}
+      ]
+    });
+    expect(transport.calls[32].$1.contains('query discoverRpcApi'), isTrue);
+    expect(transport.calls[33].$1.contains('query simulateTransaction'), isTrue);
+    expect(transport.calls[33].$2, {
+      'transaction': {
+        'bcs': {'value': 'AA=='}
+      },
+      'doGasSelection': false,
+      'checksEnabled': true,
+      'includeCommandResults': true,
+    });
   });
 
   test('iter helpers paginate graph connections', () async {

@@ -42,6 +42,9 @@ Kotlin baseline SDK implementation aligned with `go-sdks` / `py-sdks`, with API 
 - `com.suisdks.sui.batch`
   - `mapSync`
   - `mapAsync`
+- `com.suisdks.sui.bcs`
+  - `encodeUleb128` / `decodeUleb128`
+  - `BcsReader` / `BcsWriter`
 - `com.suisdks.sui.faucet`
   - `FaucetClient`
   - Timeout/headers configurable

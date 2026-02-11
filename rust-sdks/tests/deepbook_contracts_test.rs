@@ -195,10 +195,20 @@ fn deepbook_contract_method_targets() {
         .expect("call should succeed");
     assert_eq!(command_function(&tx23c, 0), "deposit");
 
+    let mut tx23c2 = Transaction::new();
+    bm3.deposit_with_cap(&mut tx23c2, "m1", "SUI", "0x201", "0x20")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx23c2, 0), "deposit_with_cap");
+
     let mut tx23d = Transaction::new();
     bm3.withdraw(&mut tx23d, "m1", "SUI", 1.0)
         .expect("call should succeed");
     assert_eq!(command_function(&tx23d, 0), "withdraw");
+
+    let mut tx23d2 = Transaction::new();
+    bm3.withdraw_with_cap(&mut tx23d2, "m1", "SUI", "0x202", 1.0)
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx23d2, 0), "withdraw_with_cap");
 
     let mut tx23e = Transaction::new();
     bm3.withdraw_all(&mut tx23e, "m1", "SUI")
@@ -308,6 +318,24 @@ fn deepbook_contract_method_targets() {
     let last23u = tx23u.data.commands.len() - 1;
     assert_eq!(command_function(&tx23u, last23u), "claim_rebates");
 
+    let mut tx23u2 = Transaction::new();
+    contract
+        .mid_price(&mut tx23u2, "DEEP_SUI")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx23u2, 0), "mid_price");
+
+    let mut tx23u3 = Transaction::new();
+    contract
+        .whitelisted(&mut tx23u3, "DEEP_SUI")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx23u3, 0), "whitelisted");
+
+    let mut tx23u4 = Transaction::new();
+    contract
+        .create_permissionless_pool(&mut tx23u4, "DEEP", "SUI", 1.0, 1.0, 1.0, "0x203")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx23u4, 0), "create_permissionless_pool");
+
     let mut tx23v = Transaction::new();
     contract
         .update_pool_allowed_versions(&mut tx23v, "DEEP_SUI")
@@ -400,6 +428,24 @@ fn deepbook_contract_method_targets() {
 
     let margin_pool = MarginPoolContract { config: &cfg };
 
+    let mut tx24a = Transaction::new();
+    margin_pool
+        .mint_supplier_cap(&mut tx24a)
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx24a, 0), "mint_supplier_cap");
+
+    let mut tx24b = Transaction::new();
+    margin_pool
+        .mint_supply_referral(&mut tx24b, "SUI")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx24b, 0), "mint_supply_referral");
+
+    let mut tx24c = Transaction::new();
+    margin_pool
+        .withdraw_referral_fees(&mut tx24c, "SUI", "0x204")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx24c, 0), "withdraw_referral_fees");
+
     let mut tx24 = Transaction::new();
     margin_pool
         .get_id(&mut tx24, "SUI")
@@ -479,6 +525,42 @@ fn deepbook_contract_method_targets() {
         .manager_state(&mut tx36, "mm1")
         .expect("call should succeed");
     assert_eq!(command_function(&tx36, 0), "manager_state");
+
+    let mut tx36b = Transaction::new();
+    margin_manager
+        .borrow_base(&mut tx36b, "mm1", 1.0)
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx36b, 0), "borrow_base");
+
+    let mut tx36c = Transaction::new();
+    margin_manager
+        .borrow_quote(&mut tx36c, "mm1", 1.0)
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx36c, 0), "borrow_quote");
+
+    let mut tx36d = Transaction::new();
+    margin_manager
+        .repay_base(&mut tx36d, "mm1", Some(1.0))
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx36d, 0), "repay_base");
+
+    let mut tx36e = Transaction::new();
+    margin_manager
+        .repay_quote(&mut tx36e, "mm1", None)
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx36e, 0), "repay_quote");
+
+    let mut tx36f = Transaction::new();
+    margin_manager
+        .set_margin_manager_referral(&mut tx36f, "mm1", "0x205")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx36f, 0), "set_margin_manager_referral");
+
+    let mut tx36g = Transaction::new();
+    margin_manager
+        .unset_margin_manager_referral(&mut tx36g, "mm1", "DEEP_SUI")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx36g, 0), "unset_margin_manager_referral");
 
     let margin_tpsl = MarginTPSLContract { config: &cfg };
 
@@ -659,6 +741,18 @@ fn deepbook_contract_method_targets() {
         .place_market_order(&mut tx53, "mm1", 1, 0, 1.0, true, true)
         .expect("call should succeed");
     assert_eq!(command_function(&tx53, 0), "place_market_order");
+
+    let mut tx53b = Transaction::new();
+    pool_proxy
+        .place_reduce_only_limit_order(&mut tx53b, "mm1", 1, 0, 0, 1.0, 1.0, true, true, 100)
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx53b, 0), "place_reduce_only_limit_order");
+
+    let mut tx53c = Transaction::new();
+    pool_proxy
+        .place_reduce_only_market_order(&mut tx53c, "mm1", 1, 0, 1.0, true, true)
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx53c, 0), "place_reduce_only_market_order");
 
     let mut tx54 = Transaction::new();
     pool_proxy
@@ -967,6 +1061,15 @@ fn deepbook_contract_method_targets() {
         .expect("call should succeed");
     assert_eq!(command_function(&tx98, 0), "disable_deepbook_pool");
 
+    let mut tx98b = Transaction::new();
+    let mpc2b = maintainer
+        .new_margin_pool_config(&mut tx98b, "SUI", 10.0, 0.9, 0.1, 1.0)
+        .expect("call should succeed");
+    margin_admin
+        .update_risk_params(&mut tx98b, "DEEP_SUI", "0xc", mpc2b)
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx98b, 1), "update_risk_params");
+
     let mut tx99 = Transaction::new();
     margin_admin
         .enable_version(&mut tx99, 1, "0xc")
@@ -996,6 +1099,15 @@ fn deepbook_contract_method_targets() {
         .disable_version_pause_cap(&mut tx103, 1, "0xe")
         .expect("call should succeed");
     assert_eq!(command_function(&tx103, 0), "disable_version_pause_cap");
+
+    let mut tx103b = Transaction::new();
+    margin_admin
+        .admin_withdraw_default_referral_fees(&mut tx103b, "SUI", "0xc")
+        .expect("call should succeed");
+    assert_eq!(
+        command_function(&tx103b, 0),
+        "admin_withdraw_default_referral_fees"
+    );
 }
 
 #[test]

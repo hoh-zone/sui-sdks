@@ -65,6 +65,21 @@ class GraphQlClient {
     return _executeChecked(query, variables: variables);
   }
 
+  Future<Map<String, dynamic>> discoverRpcApi() {
+    return query(
+      r'''
+query discoverRpcApi {
+  serviceConfig {
+    maxQueryDepth
+    maxQueryNodes
+    maxPageSize(type: "Query", field: "transactions")
+    defaultPageSize(type: "Query", field: "transactions")
+  }
+}
+''',
+    );
+  }
+
   Future<Map<String, dynamic>> query(String query, {Map<String, dynamic>? variables}) {
     return execute(query, variables: variables);
   }
@@ -124,6 +139,15 @@ query getCoins($owner: SuiAddress!, $first: Int, $cursor: String, $type: String 
         'type': coinType,
       },
     );
+  }
+
+  Future<Map<String, dynamic>> getGas({
+    required String owner,
+    String coinType = defaultGraphQlCoinType,
+    String? cursor,
+    int? limit,
+  }) {
+    return getCoins(owner: owner, coinType: coinType, cursor: cursor, limit: limit);
   }
 
   Stream<Map<String, dynamic>> iterCoins({
@@ -464,6 +488,22 @@ query simulateTransaction(
     );
   }
 
+  Future<Map<String, dynamic>> dryRun({
+    required String txBytesB64,
+    bool checksEnabled = true,
+    bool doGasSelection = false,
+    bool includeCommandResults = false,
+  }) {
+    return simulateTransaction(
+      transaction: <String, dynamic>{
+        'bcs': <String, dynamic>{'value': txBytesB64}
+      },
+      checksEnabled: checksEnabled,
+      doGasSelection: doGasSelection,
+      includeCommandResults: includeCommandResults,
+    );
+  }
+
   Future<Map<String, dynamic>> resolveTransaction({
     required Map<String, dynamic> transaction,
     bool doGasSelection = true,
@@ -715,6 +755,52 @@ query getCurrentSystemState {
 
   Future<Map<String, dynamic>> getLatestSuiSystemState() {
     return getCurrentSystemState();
+  }
+
+  Future<Map<String, dynamic>> getCommitteeInfo({
+    int? epoch,
+    String? cursor,
+    int? limit,
+  }) {
+    return query(
+      r'''
+query getCommitteeInfo($epochId: UInt53, $first: Int, $cursor: String) {
+  epoch(epochId: $epochId) {
+    epochId
+    referenceGasPrice
+    validatorSet {
+      activeValidators(first: $first, after: $cursor) {
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          atRisk
+          contents
+        }
+      }
+    }
+  }
+}
+''',
+      variables: <String, dynamic>{'epochId': epoch, 'first': limit, 'cursor': cursor},
+    );
+  }
+
+  Future<Map<String, dynamic>> getStakes({
+    required String owner,
+    String? cursor,
+    int? limit,
+  }) {
+    return getOwnedObjects(
+      owner: owner,
+      filter: const <String, dynamic>{'type': '0x3::staking_pool::StakedSui'},
+      cursor: cursor,
+      limit: limit,
+    );
+  }
+
+  Future<Map<String, dynamic>> getStakesByIds({
+    required List<String> stakedSuiIds,
+  }) {
+    return multiGetObjects(objectIds: stakedSuiIds);
   }
 
   Future<Map<String, dynamic>> _executeChecked(String query, {Map<String, dynamic>? variables}) async {
