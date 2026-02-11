@@ -8,9 +8,10 @@ public enum Secp256k1Error: Error, Equatable {
     case invalidSignatureLength
     case invalidSignatureEncoding
     case invalidSerializedSignature
+    case invalidSecretKeyScheme
 }
 
-public struct Secp256k1PublicKey {
+public struct Secp256k1PublicKey: SuiPublicKeyProtocol {
     private let key: P256K.Signing.PublicKey
 
     public init(rawBytes: [UInt8]) throws {
@@ -76,6 +77,14 @@ public struct Secp256k1Keypair {
         self.privateKey = try P256K.Signing.PrivateKey(dataRepresentation: Data(privateKeyBytes))
     }
 
+    public init(secretKey: String) throws {
+        let parsed = try SuiPrivateKey.decode(secretKey)
+        guard parsed.scheme == .secp256k1 else {
+            throw Secp256k1Error.invalidSecretKeyScheme
+        }
+        try self.init(privateKeyBytes: parsed.secretKey)
+    }
+
     public var publicKey: Secp256k1PublicKey {
         Secp256k1PublicKey(privateKey.publicKey)
     }
@@ -86,6 +95,10 @@ public struct Secp256k1Keypair {
 
     public func toSuiAddress() -> String {
         publicKey.toSuiAddress()
+    }
+
+    public func getSecretKey() throws -> String {
+        try SuiPrivateKey.encode(secretKey: privateKeyBytes, scheme: .secp256k1)
     }
 
     public func sign(message: [UInt8]) throws -> [UInt8] {
@@ -125,3 +138,5 @@ public struct Secp256k1Keypair {
         return key.verify(message: message, signature: signature)
     }
 }
+
+extension Secp256k1Keypair: SuiSigner {}

@@ -7,6 +7,8 @@ Kotlin baseline SDK implementation aligned with `go-sdks` / `py-sdks`, with API 
 - `com.suisdks.sui.jsonrpc`
   - `JsonRpcClient`
   - `HttpJsonRpcTransport`
+  - Networks: `mainnet` / `testnet` / `devnet` / `localnet`
+  - `fromEndpoint` / `callRaw` / `batchCall`
 - `com.suisdks.sui.grpc`
   - `SuiGrpcClient`
   - `OfficialGrpcTransport`
@@ -28,18 +30,34 @@ Kotlin baseline SDK implementation aligned with `go-sdks` / `py-sdks`, with API 
   - `TransactionCommands`
   - `Inputs`
   - `Resolver`
+  - `AsyncResolver`
   - `CachingExecutor` / `SerialExecutor` / `ParallelExecutor`
 - `com.suisdks.sui.client`
   - `SuiClient`
   - `AsyncSuiClient`
+  - Includes sync/async wrappers for JSON-RPC coverage (objects/coins/transactions/checkpoints/metrics/epochs)
+  - `fromNetwork` / `fromEndpoint` support timeout and headers
 - `com.suisdks.sui.pagination`
   - `iterPaginatedItems`
+- `com.suisdks.sui.batch`
+  - `mapSync`
+  - `mapAsync`
 - `com.suisdks.sui.faucet`
   - `FaucetClient`
+  - Timeout/headers configurable
 - `com.suisdks.sui.graphql`
   - `GraphQLClient`
+  - `executeNamed`
+  - `executePersistedQuery` (Apollo persisted query extension payload)
+  - Timeout/headers configurable
 - `com.suisdks.sui.verify`
   - `VerifyFacade`
+- `com.suisdks.sui.utils`
+  - `normalizeSuiAddress` / `normalizeSuiObjectId`
+  - `isValidSuiAddress` / `isValidSuiObjectId` / `isValidTransactionDigest`
+  - `formatAddress` / `formatDigest`
+  - `isValidSuiNSName` / `normalizeSuiNSName`
+  - `parseStructTag` / `normalizeStructTag`
 
 ## Build / Test
 

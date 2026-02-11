@@ -374,3 +374,12 @@ func (c *DeepBookContract) CheckMarketOrderParams(tx *stx.Transaction, poolKey s
 	q := uint64(math.Round(quantity * base.Scalar))
 	return tx.MoveCall(c.poolTarget("check_market_order_params"), []stx.Argument{tx.Object(pool.Address), pureU64(tx, q)}, []string{base.Type, quote.Type})
 }
+
+func (c *DeepBookContract) CheckLimitOrderParams(tx *stx.Transaction, poolKey string, price, quantity float64, expireTimestamp uint64) stx.Argument {
+	base, quote, pool := c.poolTypes(poolKey)
+	p := uint64(math.Round((price * utils.FloatScalar * quote.Scalar) / base.Scalar))
+	q := uint64(math.Round(quantity * base.Scalar))
+	return tx.MoveCall(c.poolTarget("check_limit_order_params"), []stx.Argument{
+		tx.Object(pool.Address), pureU64(tx, p), pureU64(tx, q), pureU64(tx, expireTimestamp), tx.Object("0x6"),
+	}, []string{base.Type, quote.Type})
+}

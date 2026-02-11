@@ -2,6 +2,7 @@ import Foundation
 
 public enum VerifyError: Error, Equatable {
     case unsupportedScheme
+    case publicKeyAddressMismatch
 }
 
 public enum SuiVerify {
@@ -64,6 +65,19 @@ public enum SuiVerify {
         )
     }
 
+    public static func verifySerializedSignature(
+        message: [UInt8],
+        serializedSignature: String,
+        expectedAddress: String
+    ) throws -> Bool {
+        let parsed = try SerializedSignature.parse(serializedSignature)
+        let key = try SuiPublicKeyFactory.fromRawBytes(scheme: parsed.scheme, bytes: parsed.publicKey)
+        if key.toSuiAddress() != expectedAddress {
+            throw VerifyError.publicKeyAddressMismatch
+        }
+        return key.verify(message: message, signature: parsed.signature)
+    }
+
     public static func verifySerializedTransactionSignature(
         transaction: [UInt8],
         serializedSignature: String
@@ -77,6 +91,20 @@ public enum SuiVerify {
         )
     }
 
+    public static func verifySerializedTransactionSignature(
+        transaction: [UInt8],
+        serializedSignature: String,
+        expectedAddress: String
+    ) throws -> Bool {
+        let parsed = try SerializedSignature.parse(serializedSignature)
+        let key = try SuiPublicKeyFactory.fromRawBytes(scheme: parsed.scheme, bytes: parsed.publicKey)
+        if key.toSuiAddress() != expectedAddress {
+            throw VerifyError.publicKeyAddressMismatch
+        }
+        let digest = SuiIntent.hashIntentMessage(scope: .transactionData, message: transaction)
+        return key.verify(message: digest, signature: parsed.signature)
+    }
+
     public static func verifySerializedPersonalMessageSignature(
         message: [UInt8],
         serializedSignature: String
@@ -88,6 +116,27 @@ public enum SuiVerify {
             publicKey: parsed.publicKey,
             scheme: parsed.scheme
         )
+    }
+
+    public static func verifySerializedPersonalMessageSignature(
+        message: [UInt8],
+        serializedSignature: String,
+        expectedAddress: String
+    ) throws -> Bool {
+        let parsed = try SerializedSignature.parse(serializedSignature)
+        let key = try SuiPublicKeyFactory.fromRawBytes(scheme: parsed.scheme, bytes: parsed.publicKey)
+        if key.toSuiAddress() != expectedAddress {
+            throw VerifyError.publicKeyAddressMismatch
+        }
+        let serializedMessage = try SuiIntent.serializePersonalMessage(message)
+        let digest = SuiIntent.hashIntentMessage(scope: .personalMessage, message: serializedMessage)
+        return key.verify(message: digest, signature: parsed.signature)
+    }
+
+    public static func publicKeyFromSerializedSignature(_ serializedSignature: String) throws -> (SignatureScheme, any SuiPublicKeyProtocol) {
+        let parsed = try SerializedSignature.parse(serializedSignature)
+        let key = try SuiPublicKeyFactory.fromRawBytes(scheme: parsed.scheme, bytes: parsed.publicKey)
+        return (parsed.scheme, key)
     }
 
     public static func verifyWithIntent(

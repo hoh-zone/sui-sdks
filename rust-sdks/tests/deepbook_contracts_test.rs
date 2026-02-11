@@ -2,8 +2,10 @@ use std::collections::HashMap;
 
 use sui_sdks_rust::deepbook_v3::config::DeepBookConfig;
 use sui_sdks_rust::deepbook_v3::contracts::{
-    BalanceManagerContract, DeepBookContract, GovernanceContract, MarginManagerContract,
-    MarginPoolContract, MarginRegistryContract, MarginTPSLContract,
+    BalanceManagerContract, DeepBookAdminContract, DeepBookContract, FlashLoanContract,
+    GovernanceContract, MarginAdminContract, MarginLiquidationsContract, MarginMaintainerContract,
+    MarginManagerContract, MarginPoolContract, MarginRegistryContract, MarginTPSLContract,
+    PoolProxyContract,
 };
 use sui_sdks_rust::deepbook_v3::types::{BalanceManager, MarginManager};
 use sui_sdks_rust::sui::transactions::Transaction;
@@ -183,6 +185,219 @@ fn deepbook_contract_method_targets() {
         .expect("call should succeed");
     assert_eq!(command_function(&tx23, 0), "get_balance_manager_referral_id");
 
+    let mut tx23b = Transaction::new();
+    bm3.create_balance_manager(&mut tx23b)
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx23b, 0), "new");
+
+    let mut tx23c = Transaction::new();
+    bm3.deposit(&mut tx23c, "m1", "SUI", "0x20")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx23c, 0), "deposit");
+
+    let mut tx23d = Transaction::new();
+    bm3.withdraw(&mut tx23d, "m1", "SUI", 1.0)
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx23d, 0), "withdraw");
+
+    let mut tx23e = Transaction::new();
+    bm3.withdraw_all(&mut tx23e, "m1", "SUI")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx23e, 0), "withdraw_all");
+
+    let mut tx23f = Transaction::new();
+    bm3.mint_trade_cap(&mut tx23f, "m1")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx23f, 0), "mint_trade_cap");
+
+    let mut tx23g = Transaction::new();
+    bm3.mint_deposit_cap(&mut tx23g, "m1")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx23g, 0), "mint_deposit_cap");
+
+    let mut tx23h = Transaction::new();
+    bm3.mint_withdraw_cap(&mut tx23h, "m1")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx23h, 0), "mint_withdraw_cap");
+
+    let mut tx23i = Transaction::new();
+    bm3.register_balance_manager(&mut tx23i, "m1")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx23i, 0), "register_balance_manager");
+
+    let mut tx23j = Transaction::new();
+    bm3.owner(&mut tx23j, "m1").expect("call should succeed");
+    assert_eq!(command_function(&tx23j, 0), "owner");
+
+    let mut tx23k = Transaction::new();
+    bm3.id(&mut tx23k, "m1").expect("call should succeed");
+    assert_eq!(command_function(&tx23k, 0), "id");
+
+    let mut tx23l = Transaction::new();
+    bm3.set_balance_manager_referral(&mut tx23l, "m1", "0x4")
+        .expect("call should succeed");
+    let last23l = tx23l.data.commands.len() - 1;
+    assert_eq!(command_function(&tx23l, last23l), "set_balance_manager_referral");
+
+    let mut tx23m = Transaction::new();
+    bm3.unset_balance_manager_referral(&mut tx23m, "m1", "DEEP_SUI")
+        .expect("call should succeed");
+    let last23m = tx23m.data.commands.len() - 1;
+    assert_eq!(
+        command_function(&tx23m, last23m),
+        "unset_balance_manager_referral"
+    );
+
+    let mut tx23n = Transaction::new();
+    contract
+        .place_limit_order(
+            &mut tx23n, "DEEP_SUI", "m1", 1, 0, 0, 1.0, 1.0, true, true, Some(100),
+        )
+        .expect("call should succeed");
+    let last23n = tx23n.data.commands.len() - 1;
+    assert_eq!(command_function(&tx23n, last23n), "place_limit_order");
+
+    let mut tx23o = Transaction::new();
+    contract
+        .place_market_order(&mut tx23o, "DEEP_SUI", "m1", 1, 0, 1.0, true, true)
+        .expect("call should succeed");
+    let last23o = tx23o.data.commands.len() - 1;
+    assert_eq!(command_function(&tx23o, last23o), "place_market_order");
+
+    let mut tx23p = Transaction::new();
+    contract
+        .modify_order(&mut tx23p, "DEEP_SUI", "m1", 1, 1.0)
+        .expect("call should succeed");
+    let last23p = tx23p.data.commands.len() - 1;
+    assert_eq!(command_function(&tx23p, last23p), "modify_order");
+
+    let mut tx23q = Transaction::new();
+    contract
+        .cancel_order(&mut tx23q, "DEEP_SUI", "m1", 1)
+        .expect("call should succeed");
+    let last23q = tx23q.data.commands.len() - 1;
+    assert_eq!(command_function(&tx23q, last23q), "cancel_order");
+
+    let mut tx23r = Transaction::new();
+    contract
+        .cancel_all_orders(&mut tx23r, "DEEP_SUI", "m1")
+        .expect("call should succeed");
+    let last23r = tx23r.data.commands.len() - 1;
+    assert_eq!(command_function(&tx23r, last23r), "cancel_all_orders");
+
+    let mut tx23s = Transaction::new();
+    contract
+        .withdraw_settled_amounts(&mut tx23s, "DEEP_SUI", "m1")
+        .expect("call should succeed");
+    let last23s = tx23s.data.commands.len() - 1;
+    assert_eq!(command_function(&tx23s, last23s), "withdraw_settled_amounts");
+
+    let mut tx23t = Transaction::new();
+    contract
+        .withdraw_settled_amounts_permissionless(&mut tx23t, "DEEP_SUI", "m1")
+        .expect("call should succeed");
+    assert_eq!(
+        command_function(&tx23t, 0),
+        "withdraw_settled_amounts_permissionless"
+    );
+
+    let mut tx23u = Transaction::new();
+    contract
+        .claim_rebates(&mut tx23u, "DEEP_SUI", "m1")
+        .expect("call should succeed");
+    let last23u = tx23u.data.commands.len() - 1;
+    assert_eq!(command_function(&tx23u, last23u), "claim_rebates");
+
+    let mut tx23v = Transaction::new();
+    contract
+        .update_pool_allowed_versions(&mut tx23v, "DEEP_SUI")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx23v, 0), "update_pool_allowed_versions");
+
+    let mut tx23w = Transaction::new();
+    contract
+        .add_deep_price_point(&mut tx23w, "DEEP_SUI", "DEEP_SUI")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx23w, 0), "add_deep_price_point");
+
+    let mut tx23x = Transaction::new();
+    contract
+        .mint_referral(&mut tx23x, "DEEP_SUI", 1.25)
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx23x, 0), "mint_referral");
+
+    let mut tx23y = Transaction::new();
+    contract
+        .update_pool_referral_multiplier(&mut tx23y, "DEEP_SUI", "0x30", 1.5)
+        .expect("call should succeed");
+    assert_eq!(
+        command_function(&tx23y, 0),
+        "update_pool_referral_multiplier"
+    );
+
+    let mut tx23z = Transaction::new();
+    contract
+        .claim_pool_referral_rewards(&mut tx23z, "DEEP_SUI", "0x30")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx23z, 0), "claim_pool_referral_rewards");
+
+    let mut tx23aa = Transaction::new();
+    contract
+        .burn_deep(&mut tx23aa, "DEEP_SUI")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx23aa, 0), "burn_deep");
+
+    let mut tx23ab = Transaction::new();
+    contract
+        .swap_exact_base_for_quote(&mut tx23ab, "DEEP_SUI", "0x31", "0x32", 1.0)
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx23ab, 0), "swap_exact_base_for_quote");
+
+    let mut tx23ac = Transaction::new();
+    contract
+        .swap_exact_quote_for_base(&mut tx23ac, "DEEP_SUI", "0x33", "0x32", 1.0)
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx23ac, 0), "swap_exact_quote_for_base");
+
+    let mut tx23ad = Transaction::new();
+    contract
+        .swap_exact_quantity(&mut tx23ad, "DEEP_SUI", "0x31", "0x33", "0x32", 1.0, true)
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx23ad, 0), "swap_exact_quantity");
+
+    let mut tx23ae = Transaction::new();
+    contract
+        .swap_exact_base_for_quote_with_manager(
+            &mut tx23ae, "DEEP_SUI", "m1", "0x34", "0x35", "0x36", "0x31", 1.0,
+        )
+        .expect("call should succeed");
+    assert_eq!(
+        command_function(&tx23ae, 0),
+        "swap_exact_base_for_quote_with_manager"
+    );
+
+    let mut tx23af = Transaction::new();
+    contract
+        .swap_exact_quote_for_base_with_manager(
+            &mut tx23af, "DEEP_SUI", "m1", "0x34", "0x35", "0x36", "0x33", 1.0,
+        )
+        .expect("call should succeed");
+    assert_eq!(
+        command_function(&tx23af, 0),
+        "swap_exact_quote_for_base_with_manager"
+    );
+
+    let mut tx23ag = Transaction::new();
+    contract
+        .swap_exact_quantity_with_manager(
+            &mut tx23ag, "DEEP_SUI", "m1", "0x34", "0x35", "0x36", "0x31", "0x33", 1.0, true,
+        )
+        .expect("call should succeed");
+    assert_eq!(
+        command_function(&tx23ag, 0),
+        "swap_exact_quantity_with_manager"
+    );
+
     let margin_pool = MarginPoolContract { config: &cfg };
 
     let mut tx24 = Transaction::new();
@@ -273,6 +488,12 @@ fn deepbook_contract_method_targets() {
         .expect("call should succeed");
     assert_eq!(command_function(&tx37, 0), "conditional_order_ids");
 
+    let mut tx37b = Transaction::new();
+    margin_tpsl
+        .conditional_order(&mut tx37b, "mm1", 1)
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx37b, 0), "conditional_order");
+
     let mut tx38 = Transaction::new();
     margin_tpsl
         .lowest_trigger_above_price(&mut tx38, "mm1")
@@ -284,6 +505,70 @@ fn deepbook_contract_method_targets() {
         .highest_trigger_below_price(&mut tx39, "mm1")
         .expect("call should succeed");
     assert_eq!(command_function(&tx39, 0), "highest_trigger_below_price");
+
+    let mut tx39b = Transaction::new();
+    margin_tpsl
+        .new_condition(&mut tx39b, "DEEP_SUI", true, 1.0)
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx39b, 0), "new_condition");
+
+    let mut tx39c = Transaction::new();
+    margin_tpsl
+        .new_pending_limit_order(&mut tx39c, "DEEP_SUI", 1, 0, 0, 1.0, 1.0, true, true, Some(100))
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx39c, 0), "new_pending_limit_order");
+
+    let mut tx39d = Transaction::new();
+    margin_tpsl
+        .new_pending_market_order(&mut tx39d, "DEEP_SUI", 1, 0, 1.0, true, true)
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx39d, 0), "new_pending_market_order");
+
+    let mut tx39e = Transaction::new();
+    margin_tpsl
+        .add_conditional_limit_order(
+            &mut tx39e,
+            "mm1",
+            1,
+            true,
+            1.0,
+            2,
+            0,
+            0,
+            1.0,
+            1.0,
+            true,
+            true,
+            Some(100),
+        )
+        .expect("call should succeed");
+    let last39e = tx39e.data.commands.len() - 1;
+    assert_eq!(command_function(&tx39e, last39e), "add_conditional_order");
+
+    let mut tx39f = Transaction::new();
+    margin_tpsl
+        .add_conditional_market_order(&mut tx39f, "mm1", 1, true, 1.0, 2, 0, 1.0, true, true)
+        .expect("call should succeed");
+    let last39f = tx39f.data.commands.len() - 1;
+    assert_eq!(command_function(&tx39f, last39f), "add_conditional_order");
+
+    let mut tx39g = Transaction::new();
+    margin_tpsl
+        .cancel_all_conditional_orders(&mut tx39g, "mm1")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx39g, 0), "cancel_all_conditional_orders");
+
+    let mut tx39h = Transaction::new();
+    margin_tpsl
+        .cancel_conditional_order(&mut tx39h, "mm1", 1)
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx39h, 0), "cancel_conditional_order");
+
+    let mut tx39i = Transaction::new();
+    margin_tpsl
+        .execute_conditional_orders(&mut tx39i, "0x3", "DEEP_SUI", 10)
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx39i, 0), "execute_conditional_orders");
 
     let margin_registry = MarginRegistryContract { config: &cfg };
 
@@ -358,6 +643,359 @@ fn deepbook_contract_method_targets() {
         .allowed_pause_caps(&mut tx51)
         .expect("call should succeed");
     assert_eq!(command_function(&tx51, 0), "allowed_pause_caps");
+
+    let pool_proxy = PoolProxyContract { config: &cfg };
+
+    let mut tx52 = Transaction::new();
+    pool_proxy
+        .place_limit_order(
+            &mut tx52, "mm1", 1, 0, 0, 1.0, 1.0, true, true, 100,
+        )
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx52, 0), "place_limit_order");
+
+    let mut tx53 = Transaction::new();
+    pool_proxy
+        .place_market_order(&mut tx53, "mm1", 1, 0, 1.0, true, true)
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx53, 0), "place_market_order");
+
+    let mut tx54 = Transaction::new();
+    pool_proxy
+        .modify_order(&mut tx54, "mm1", 1, 1.0)
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx54, 0), "modify_order");
+
+    let mut tx55 = Transaction::new();
+    pool_proxy
+        .cancel_order(&mut tx55, "mm1", 1)
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx55, 0), "cancel_order");
+
+    let mut tx56 = Transaction::new();
+    pool_proxy
+        .cancel_orders(&mut tx56, "mm1", &[1, 2])
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx56, 0), "cancel_orders");
+
+    let mut tx57 = Transaction::new();
+    pool_proxy
+        .cancel_all_orders(&mut tx57, "mm1")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx57, 0), "cancel_all_orders");
+
+    let mut tx58 = Transaction::new();
+    pool_proxy
+        .withdraw_settled_amounts(&mut tx58, "mm1")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx58, 0), "withdraw_settled_amounts");
+
+    let mut tx59 = Transaction::new();
+    pool_proxy
+        .stake(&mut tx59, "mm1", 1.0)
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx59, 0), "stake");
+
+    let mut tx60 = Transaction::new();
+    pool_proxy
+        .unstake(&mut tx60, "mm1")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx60, 0), "unstake");
+
+    let mut tx61 = Transaction::new();
+    pool_proxy
+        .submit_proposal(&mut tx61, "mm1", 0.1, 0.01, 10.0)
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx61, 0), "submit_proposal");
+
+    let mut tx62 = Transaction::new();
+    pool_proxy
+        .vote(&mut tx62, "mm1", "0x4")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx62, 0), "vote");
+
+    let mut tx63 = Transaction::new();
+    pool_proxy
+        .claim_rebate(&mut tx63, "mm1")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx63, 0), "claim_rebate");
+
+    let mut tx64 = Transaction::new();
+    pool_proxy
+        .withdraw_margin_settled_amounts(&mut tx64, "DEEP_SUI", "0x3")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx64, 0), "withdraw_settled_amounts_permissionless");
+
+    let liquidations = MarginLiquidationsContract { config: &cfg };
+
+    let mut tx65 = Transaction::new();
+    liquidations
+        .create_liquidation_vault(&mut tx65, "0x9")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx65, 0), "create_liquidation_vault");
+
+    let mut tx66 = Transaction::new();
+    liquidations
+        .deposit(&mut tx66, "0x10", "0x9", "SUI", "0x11")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx66, 0), "deposit");
+
+    let mut tx67 = Transaction::new();
+    liquidations
+        .withdraw(&mut tx67, "0x10", "0x9", "SUI", 1.0)
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx67, 0), "withdraw");
+
+    let mut tx68 = Transaction::new();
+    liquidations
+        .liquidate_base(&mut tx68, "0x10", "0x3", "DEEP_SUI", Some(1.0))
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx68, 0), "liquidate_base");
+
+    let mut tx69 = Transaction::new();
+    liquidations
+        .liquidate_quote(&mut tx69, "0x10", "0x3", "DEEP_SUI", None)
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx69, 0), "liquidate_quote");
+
+    let mut tx70 = Transaction::new();
+    liquidations
+        .balance(&mut tx70, "0x10", "SUI")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx70, 0), "balance");
+
+    let flash = FlashLoanContract { config: &cfg };
+
+    let mut tx71 = Transaction::new();
+    flash
+        .borrow_base_asset(&mut tx71, "DEEP_SUI", 1.0)
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx71, 0), "borrow_flashloan_base");
+
+    let mut tx72 = Transaction::new();
+    flash
+        .return_base_asset(&mut tx72, "DEEP_SUI", "0x12", "0x13")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx72, 0), "return_flashloan_base");
+
+    let mut tx73 = Transaction::new();
+    flash
+        .borrow_quote_asset(&mut tx73, "DEEP_SUI", 1.0)
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx73, 0), "borrow_flashloan_quote");
+
+    let mut tx74 = Transaction::new();
+    flash
+        .return_quote_asset(&mut tx74, "DEEP_SUI", "0x12", "0x13")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx74, 0), "return_flashloan_quote");
+
+    let maintainer = MarginMaintainerContract { config: &cfg };
+
+    let mut tx75 = Transaction::new();
+    maintainer
+        .new_interest_config(&mut tx75, 0.1, 0.2, 0.8, 0.5)
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx75, 0), "new_interest_config");
+
+    let mut tx76 = Transaction::new();
+    maintainer
+        .new_margin_pool_config(&mut tx76, "SUI", 10.0, 0.9, 0.1, 1.0)
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx76, 0), "new_margin_pool_config");
+
+    let mut tx77 = Transaction::new();
+    maintainer
+        .new_margin_pool_config_with_rate_limit(&mut tx77, "SUI", 10.0, 0.9, 0.1, 1.0, 5.0, 0.1, true)
+        .expect("call should succeed");
+    assert_eq!(
+        command_function(&tx77, 0),
+        "new_margin_pool_config_with_rate_limit"
+    );
+
+    let mut tx78 = Transaction::new();
+    let mp = maintainer
+        .new_margin_pool_config(&mut tx78, "SUI", 10.0, 0.9, 0.1, 1.0)
+        .expect("call should succeed");
+    let ic = maintainer
+        .new_interest_config(&mut tx78, 0.1, 0.2, 0.8, 0.5)
+        .expect("call should succeed");
+    maintainer
+        .new_protocol_config(&mut tx78, mp, ic)
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx78, 2), "new_protocol_config");
+
+    let mut tx79 = Transaction::new();
+    let mp2 = maintainer
+        .new_margin_pool_config(&mut tx79, "SUI", 10.0, 0.9, 0.1, 1.0)
+        .expect("call should succeed");
+    let ic2 = maintainer
+        .new_interest_config(&mut tx79, 0.1, 0.2, 0.8, 0.5)
+        .expect("call should succeed");
+    let pc = maintainer
+        .new_protocol_config(&mut tx79, mp2, ic2)
+        .expect("call should succeed");
+    maintainer
+        .create_margin_pool(&mut tx79, "SUI", pc, "0x14")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx79, 3), "create_margin_pool");
+
+    let mut tx80 = Transaction::new();
+    maintainer
+        .enable_deepbook_pool_for_loan(&mut tx80, "DEEP_SUI", "SUI", "0x15")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx80, 0), "enable_deepbook_pool_for_loan");
+
+    let mut tx81 = Transaction::new();
+    maintainer
+        .disable_deepbook_pool_for_loan(&mut tx81, "DEEP_SUI", "SUI", "0x15")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx81, 0), "disable_deepbook_pool_for_loan");
+
+    let mut tx82 = Transaction::new();
+    let ic3 = maintainer
+        .new_interest_config(&mut tx82, 0.1, 0.2, 0.8, 0.5)
+        .expect("call should succeed");
+    maintainer
+        .update_interest_params(&mut tx82, "SUI", "0x15", ic3)
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx82, 1), "update_interest_params");
+
+    let mut tx83 = Transaction::new();
+    let mpc = maintainer
+        .new_margin_pool_config(&mut tx83, "SUI", 10.0, 0.9, 0.1, 1.0)
+        .expect("call should succeed");
+    maintainer
+        .update_margin_pool_config(&mut tx83, "SUI", "0x15", mpc)
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx83, 1), "update_margin_pool_config");
+
+    let deepbook_admin = DeepBookAdminContract { config: &cfg };
+
+    let mut tx84 = Transaction::new();
+    deepbook_admin
+        .create_pool_admin(&mut tx84, "DEEP", "SUI", 1.0, 1.0, 1.0, true, false, "0xa")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx84, 0), "create_pool_admin");
+
+    let mut tx85 = Transaction::new();
+    deepbook_admin
+        .unregister_pool_admin(&mut tx85, "DEEP_SUI", "0xa")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx85, 0), "unregister_pool_admin");
+
+    let mut tx86 = Transaction::new();
+    deepbook_admin
+        .update_allowed_versions(&mut tx86, "DEEP_SUI", "0xa")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx86, 0), "update_allowed_versions");
+
+    let mut tx87 = Transaction::new();
+    deepbook_admin
+        .enable_version(&mut tx87, 1, "0xa")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx87, 0), "enable_version");
+
+    let mut tx88 = Transaction::new();
+    deepbook_admin
+        .disable_version(&mut tx88, 1, "0xa")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx88, 0), "disable_version");
+
+    let mut tx89 = Transaction::new();
+    deepbook_admin
+        .set_treasury_address(&mut tx89, "0xb", "0xa")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx89, 0), "set_treasury_address");
+
+    let mut tx90 = Transaction::new();
+    deepbook_admin
+        .add_stable_coin(&mut tx90, "SUI", "0xa")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx90, 0), "add_stablecoin");
+
+    let mut tx91 = Transaction::new();
+    deepbook_admin
+        .remove_stable_coin(&mut tx91, "SUI", "0xa")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx91, 0), "remove_stablecoin");
+
+    let mut tx92 = Transaction::new();
+    deepbook_admin
+        .adjust_tick_size(&mut tx92, "DEEP_SUI", 1.0, "0xa")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx92, 0), "adjust_tick_size_admin");
+
+    let mut tx93 = Transaction::new();
+    deepbook_admin
+        .adjust_min_lot_size(&mut tx93, "DEEP_SUI", 1.0, 1.0, "0xa")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx93, 0), "adjust_min_lot_size_admin");
+
+    let margin_admin = MarginAdminContract { config: &cfg };
+
+    let mut tx94 = Transaction::new();
+    margin_admin
+        .mint_maintainer_cap(&mut tx94, "0xc")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx94, 0), "mint_maintainer_cap");
+
+    let mut tx95 = Transaction::new();
+    margin_admin
+        .revoke_maintainer_cap(&mut tx95, "0xc", "0xd")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx95, 0), "revoke_maintainer_cap");
+
+    let mut tx96 = Transaction::new();
+    let mpc2 = maintainer
+        .new_margin_pool_config(&mut tx96, "SUI", 10.0, 0.9, 0.1, 1.0)
+        .expect("call should succeed");
+    margin_admin
+        .register_deepbook_pool(&mut tx96, "DEEP_SUI", "0xc", mpc2)
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx96, 1), "register_deepbook_pool");
+
+    let mut tx97 = Transaction::new();
+    margin_admin
+        .enable_deepbook_pool(&mut tx97, "DEEP_SUI", "0xc")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx97, 0), "enable_deepbook_pool");
+
+    let mut tx98 = Transaction::new();
+    margin_admin
+        .disable_deepbook_pool(&mut tx98, "DEEP_SUI", "0xc")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx98, 0), "disable_deepbook_pool");
+
+    let mut tx99 = Transaction::new();
+    margin_admin
+        .enable_version(&mut tx99, 1, "0xc")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx99, 0), "enable_version");
+
+    let mut tx100 = Transaction::new();
+    margin_admin
+        .disable_version(&mut tx100, 1, "0xc")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx100, 0), "disable_version");
+
+    let mut tx101 = Transaction::new();
+    margin_admin
+        .mint_pause_cap(&mut tx101, "0xc")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx101, 0), "mint_pause_cap");
+
+    let mut tx102 = Transaction::new();
+    margin_admin
+        .revoke_pause_cap(&mut tx102, "0xc", "0xe")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx102, 0), "revoke_pause_cap");
+
+    let mut tx103 = Transaction::new();
+    margin_admin
+        .disable_version_pause_cap(&mut tx103, 1, "0xe")
+        .expect("call should succeed");
+    assert_eq!(command_function(&tx103, 0), "disable_version_pause_cap");
 }
 
 #[test]

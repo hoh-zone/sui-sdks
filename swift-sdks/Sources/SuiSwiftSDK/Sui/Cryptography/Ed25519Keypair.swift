@@ -6,9 +6,10 @@ public enum Ed25519Error: Error, Equatable {
     case invalidPublicKeyLength
     case invalidSignatureLength
     case invalidSerializedSignature
+    case invalidSecretKeyScheme
 }
 
-public struct Ed25519PublicKey {
+public struct Ed25519PublicKey: SuiPublicKeyProtocol {
     private let key: Curve25519.Signing.PublicKey
 
     public init(rawBytes: [UInt8]) throws {
@@ -71,6 +72,14 @@ public struct Ed25519Keypair {
         self.privateKey = try Curve25519.Signing.PrivateKey(rawRepresentation: Data(privateKeyBytes))
     }
 
+    public init(secretKey: String) throws {
+        let parsed = try SuiPrivateKey.decode(secretKey)
+        guard parsed.scheme == .ed25519 else {
+            throw Ed25519Error.invalidSecretKeyScheme
+        }
+        try self.init(privateKeyBytes: parsed.secretKey)
+    }
+
     public var publicKey: Ed25519PublicKey {
         Ed25519PublicKey(privateKey.publicKey)
     }
@@ -81,6 +90,10 @@ public struct Ed25519Keypair {
 
     public func toSuiAddress() -> String {
         publicKey.toSuiAddress()
+    }
+
+    public func getSecretKey() throws -> String {
+        try SuiPrivateKey.encode(secretKey: privateKeyBytes, scheme: .ed25519)
     }
 
     public func sign(message: [UInt8]) throws -> [UInt8] {
@@ -120,3 +133,5 @@ public struct Ed25519Keypair {
         return key.verify(message: message, signature: signature)
     }
 }
+
+extension Ed25519Keypair: SuiSigner {}

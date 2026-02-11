@@ -1,5 +1,7 @@
 package com.suisdks.sui.transactions
 
+import java.util.concurrent.CompletableFuture
+
 data class ResolveContext(
     val transaction: Transaction,
     val unresolvedInputs: MutableList<Map<String, Any?>> = mutableListOf(),
@@ -47,5 +49,48 @@ class Resolver {
             }
         }
         return context
+    }
+}
+
+fun interface AsyncResolvePlugin {
+    fun apply(context: ResolveContext): CompletableFuture<Unit>
+}
+
+class AsyncResolver {
+    private val plugins: MutableList<AsyncResolvePlugin> = mutableListOf()
+
+    fun addPlugin(plugin: AsyncResolvePlugin) {
+        plugins.add(plugin)
+    }
+
+    fun resolve(tx: Transaction): CompletableFuture<ResolveContext> {
+        val context = ResolveContext(transaction = tx)
+        tx.data.inputs.forEach { input ->
+            if (input["\$kind"] == "UnresolvedObject") {
+                context.unresolvedInputs.add(input)
+            }
+        }
+
+        var chain = CompletableFuture.completedFuture(context)
+        plugins.forEachIndexed { index, plugin ->
+            chain = chain.thenCompose { ctx ->
+                val pluginName = plugin::class.simpleName ?: "anonymous"
+                try {
+                    plugin.apply(ctx).handle { _, err ->
+                        if (err != null) {
+                            throw ResolverPluginError(
+                                index = index,
+                                pluginName = pluginName,
+                                causeError = err.cause ?: err,
+                            )
+                        }
+                        ctx
+                    }
+                } catch (e: Throwable) {
+                    throw ResolverPluginError(index = index, pluginName = pluginName, causeError = e)
+                }
+            }
+        }
+        return chain
     }
 }

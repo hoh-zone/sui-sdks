@@ -17,6 +17,8 @@ private const val BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghij
 class Transaction(private val client: Any? = null) {
     private val gson = Gson()
     val data = TransactionData()
+    val commands: List<Map<String, Any?>> get() = data.commands
+    val inputs: List<Map<String, Any?>> get() = data.inputs
 
     fun setSender(sender: String) {
         data.sender = sender
@@ -72,6 +74,8 @@ class Transaction(private val client: Any? = null) {
         }
         return addInput(map)
     }
+
+    fun `object`(value: Any): Map<String, Any?> = obj(value)
 
     fun pure(value: ByteArray): Map<String, Any?> = addInput(Inputs.pure(value))
 

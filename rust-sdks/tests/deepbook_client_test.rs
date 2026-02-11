@@ -12,6 +12,35 @@ fn b64_u64(v: u64) -> String {
     base64::engine::general_purpose::STANDARD.encode(v.to_le_bytes())
 }
 
+fn b64_vec_u64(values: &[u64]) -> String {
+    let mut out = Vec::with_capacity(1 + values.len() * 8);
+    out.push(values.len() as u8);
+    for v in values {
+        out.extend_from_slice(&v.to_le_bytes());
+    }
+    base64::engine::general_purpose::STANDARD.encode(out)
+}
+
+fn b64_vecset_addresses(addrs: &[&str]) -> String {
+    let mut out = Vec::with_capacity(1 + addrs.len() * 32);
+    out.push(addrs.len() as u8);
+    for addr in addrs {
+        let mut hex_str = addr.trim_start_matches("0x").to_string();
+        if hex_str.len() % 2 == 1 {
+            hex_str = format!("0{hex_str}");
+        }
+        let mut bytes = hex::decode(hex_str).expect("valid hex address");
+        if bytes.len() < 32 {
+            let mut padded = vec![0u8; 32 - bytes.len()];
+            padded.extend_from_slice(&bytes);
+            bytes = padded;
+        }
+        assert_eq!(bytes.len(), 32, "address must fit 32 bytes");
+        out.extend_from_slice(&bytes);
+    }
+    base64::engine::general_purpose::STANDARD.encode(out)
+}
+
 #[tokio::test]
 async fn deepbook_client_quantity_and_whitelist_methods() {
     let server = MockServer::start();
@@ -92,6 +121,13 @@ async fn deepbook_client_quantity_and_whitelist_methods() {
     let raw_order = client.get_order("DEEP_SUI", 1).await.expect("get_order");
     assert!(!raw_order.is_empty());
 
+    let normalized_order = client
+        .get_order_normalized("DEEP_SUI", 1u128 << 80)
+        .await
+        .expect("get_order_normalized");
+    assert!(normalized_order.get("normalizedPrice").is_some());
+    assert!(normalized_order.get("rawOrderBcs").is_some());
+
     let raw_orders = client
         .get_orders("DEEP_SUI", &[1, 2])
         .await
@@ -158,6 +194,18 @@ async fn deepbook_client_quantity_and_whitelist_methods() {
         .get_price_info_object_age("DEEP")
         .expect("get_price_info_object_age for missing");
     assert_eq!(no_price_info_age, -1);
+
+    let price_info_obj = client
+        .get_price_info_object("SUI")
+        .await
+        .expect("get_price_info_object");
+    assert!(!price_info_obj.is_empty());
+
+    let price_info_objs = client
+        .get_price_info_objects(&["SUI"])
+        .await
+        .expect("get_price_info_objects");
+    assert!(price_info_objs.get("SUI").is_some());
 
     let qif = client
         .get_quote_quantity_out_input_fee("DEEP_SUI", 1.0)
@@ -470,4 +518,102 @@ async fn deepbook_client_quantity_and_whitelist_methods() {
         .await
         .expect("get_margin_account_order_details");
     assert!(!raw_margin.is_empty());
+}
+
+#[tokio::test]
+async fn deepbook_client_tpsl_and_margin_registry_methods() {
+    let mut cfg = DeepBookConfig::default();
+    cfg.margin_managers.insert(
+        "mm1".to_string(),
+        MarginManager {
+            address: "0x3".to_string(),
+            pool_key: "DEEP_SUI".to_string(),
+        },
+    );
+
+    let server = MockServer::start();
+    let _mock = server.mock(|when, then| {
+        when.method(POST).path("/");
+        then.status(200).json_body(json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "result": { "commandResults": [ { "returnValues": [ { "bcs": b64_vec_u64(&[11, 22]) } ] } ] }
+        }));
+    });
+    let client = DeepBookClient::new(jsonrpc::Client::new(server.url("/"), "testnet"), cfg.clone());
+    let order_ids = client
+        .get_conditional_order_ids("mm1")
+        .await
+        .expect("get_conditional_order_ids");
+    assert_eq!(order_ids, vec!["11".to_string(), "22".to_string()]);
+
+    let conditional_order = client
+        .get_conditional_order("mm1", 11)
+        .await
+        .expect("get_conditional_order");
+    assert!(!conditional_order.is_empty());
+
+    let server = MockServer::start();
+    let _mock = server.mock(|when, then| {
+        when.method(POST).path("/");
+        then.status(200).json_body(json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "result": { "commandResults": [ { "returnValues": [ { "bcs": base64::engine::general_purpose::STANDARD.encode([1u8]) } ] } ] }
+        }));
+    });
+    let client = DeepBookClient::new(jsonrpc::Client::new(server.url("/"), "testnet"), cfg.clone());
+    let enabled = client
+        .is_pool_enabled_for_margin("DEEP_SUI")
+        .await
+        .expect("is_pool_enabled_for_margin");
+    assert!(enabled);
+
+    let server = MockServer::start();
+    let _mock = server.mock(|when, then| {
+        when.method(POST).path("/");
+        then.status(200).json_body(json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "result": { "commandResults": [ { "returnValues": [ { "bcs": b64_u64(1000) } ] } ] }
+        }));
+    });
+    let client = DeepBookClient::new(jsonrpc::Client::new(server.url("/"), "testnet"), cfg.clone());
+    let min_withdraw = client
+        .get_min_withdraw_risk_ratio("DEEP_SUI")
+        .await
+        .expect("get_min_withdraw_risk_ratio");
+    assert!(min_withdraw > 0.0);
+
+    let server = MockServer::start();
+    let _mock = server.mock(|when, then| {
+        when.method(POST).path("/");
+        then.status(200).json_body(json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "result": { "commandResults": [ { "returnValues": [ { "bcs": base64::engine::general_purpose::STANDARD.encode([1u8; 32]) } ] } ] }
+        }));
+    });
+    let client = DeepBookClient::new(jsonrpc::Client::new(server.url("/"), "testnet"), cfg.clone());
+    let base_margin_pool_id = client
+        .get_base_margin_pool_id("DEEP_SUI")
+        .await
+        .expect("get_base_margin_pool_id");
+    assert!(!base_margin_pool_id.is_empty());
+
+    let server = MockServer::start();
+    let _mock = server.mock(|when, then| {
+        when.method(POST).path("/");
+        then.status(200).json_body(json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "result": { "commandResults": [ { "returnValues": [ { "bcs": b64_vecset_addresses(&["0x1", "0x2"]) } ] } ] }
+        }));
+    });
+    let client = DeepBookClient::new(jsonrpc::Client::new(server.url("/"), "testnet"), cfg);
+    let maintainers = client
+        .get_allowed_maintainers()
+        .await
+        .expect("get_allowed_maintainers");
+    assert_eq!(maintainers.len(), 2);
 }

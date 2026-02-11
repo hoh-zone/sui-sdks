@@ -74,7 +74,11 @@ class Secp256r1Keypair {
   static final Ecdsa _algorithm = Ecdsa.p256(Sha256());
 
   static Future<Secp256r1Keypair> generate() async {
-    return Secp256r1Keypair._(await _algorithm.newKeyPair());
+    try {
+      return Secp256r1Keypair._(await _algorithm.newKeyPair());
+    } on UnimplementedError {
+      throw UnsupportedError('Secp256r1 is not available in pure dart:cryptography runtime yet');
+    }
   }
 
   static Future<Secp256r1Keypair> fromPrivateKeyBytes(List<int> privateKey) async {
@@ -96,7 +100,14 @@ class Secp256r1Keypair {
 
   Future<Uint8List> publicKeyBytes() async {
     final pk = await _keyPair.extractPublicKey();
-    return Uint8List.fromList(pk.bytes);
+    if (pk is EcPublicKey) {
+      // Return SEC1 uncompressed form: 0x04 || X || Y
+      return Uint8List.fromList(<int>[4, ...pk.x, ...pk.y]);
+    }
+    if (pk is SimplePublicKey) {
+      return Uint8List.fromList(pk.bytes);
+    }
+    throw StateError('unsupported p256 public key type: ${pk.runtimeType}');
   }
 }
 
@@ -142,9 +153,25 @@ Future<bool> verifyRawSignatureSecp256r1({
   required List<int> publicKey,
 }) {
   final algo = Ecdsa.p256(Sha256());
+  final PublicKey key;
+  if (publicKey.length == 65 && publicKey.first == 4) {
+    key = EcPublicKey(
+      x: publicKey.sublist(1, 33),
+      y: publicKey.sublist(33, 65),
+      type: KeyPairType.p256,
+    );
+  } else if (publicKey.length == 64) {
+    key = EcPublicKey(
+      x: publicKey.sublist(0, 32),
+      y: publicKey.sublist(32, 64),
+      type: KeyPairType.p256,
+    );
+  } else {
+    key = SimplePublicKey(publicKey, type: KeyPairType.p256);
+  }
   return algo.verify(
     message,
-    signature: Signature(signature, publicKey: SimplePublicKey(publicKey, type: KeyPairType.p256)),
+    signature: Signature(signature, publicKey: key),
   );
 }
 

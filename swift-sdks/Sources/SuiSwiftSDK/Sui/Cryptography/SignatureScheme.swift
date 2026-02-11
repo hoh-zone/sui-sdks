@@ -18,4 +18,13 @@ public enum SignatureScheme: UInt8, CaseIterable {
             return nil
         }
     }
+
+    public var supportsSuiPrivateKey: Bool {
+        switch self {
+        case .ed25519, .secp256k1, .secp256r1:
+            return true
+        case .multiSig, .zkLogin, .passkey:
+            return false
+        }
+    }
 }

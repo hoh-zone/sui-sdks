@@ -31,3 +31,13 @@ def encode_vec_u128(values: Iterable[int | str]) -> bytes:
     for value in values:
         w.write_bytes(encode_u128(value))
     return w.to_bytes()
+
+
+def encode_address(value: str) -> bytes:
+    text = value[2:] if value.startswith("0x") else value
+    if len(text) > 64:
+        raise ValueError("address out of range")
+    try:
+        return bytes.fromhex(text.zfill(64))
+    except ValueError as e:
+        raise ValueError("invalid address") from e

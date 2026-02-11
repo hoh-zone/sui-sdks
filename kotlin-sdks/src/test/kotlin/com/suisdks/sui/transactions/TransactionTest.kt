@@ -31,6 +31,7 @@ class TransactionTest {
         tx.setSender("0x123")
         tx.setGasBudget(1_000)
         tx.transferSui("0x456", 100)
+        tx.`object`("0x111")
         tx.makeMoveVector(null, emptyList())
         tx.publicTransferObject("0x999", "0x123")
 
@@ -38,6 +39,8 @@ class TransactionTest {
         val parsed = Transaction.fromSerialized(serialized)
         assertEquals("0x123", parsed.data.sender)
         assertTrue(parsed.data.commands.isNotEmpty())
+        assertTrue(tx.commands.isNotEmpty())
+        assertTrue(tx.inputs.isNotEmpty())
 
         val exec = tx.execute()
         val result = exec["result"] as Map<*, *>

@@ -10,3 +10,5 @@ Thumbs.db
 *.swo
 ts-sdks
 .cargo
+.dart-tool 
+.pub-cache

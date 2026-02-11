@@ -16,7 +16,9 @@ data class GraphQLRequest(
 
 class GraphQLClient(
     private val endpoint: String,
+    private val timeoutMs: Int = 30_000,
     private val headers: Map<String, String> = emptyMap(),
+    private val queries: Map<String, String> = emptyMap(),
 ) {
     private val gson = Gson()
     private val parser = Parser()
@@ -26,7 +28,7 @@ class GraphQLClient(
         variables: Map<String, Any?> = emptyMap(),
         operationName: String? = null,
         extensions: Map<String, Any?>? = null,
-    ): Map<String, Any?> = query(
+    ): Map<String, Any?> = this.query(
         GraphQLRequest(
             query = query,
             variables = variables,
@@ -43,6 +45,8 @@ class GraphQLClient(
                 requestMethod = "POST"
                 setRequestProperty("Content-Type", "application/json")
                 headers.forEach { (k, v) -> setRequestProperty(k, v) }
+                connectTimeout = timeoutMs
+                readTimeout = timeoutMs
                 doOutput = true
             }
             conn.outputStream.use { it.write(gson.toJson(request).toByteArray(Charsets.UTF_8)) }
@@ -64,6 +68,44 @@ class GraphQLClient(
         } catch (e: Exception) {
             throw IllegalStateException("graphql request failed", e)
         }
+    }
+
+    fun executeNamed(
+        queryName: String,
+        variables: Map<String, Any?> = emptyMap(),
+        operationName: String? = null,
+        extensions: Map<String, Any?>? = null,
+    ): Map<String, Any?> {
+        val query = queries[queryName] ?: throw IllegalArgumentException("unknown query: $queryName")
+        return execute(
+            query = query,
+            variables = variables,
+            operationName = operationName,
+            extensions = extensions,
+        )
+    }
+
+    fun executePersistedQuery(
+        queryText: String? = null,
+        sha256Hash: String,
+        variables: Map<String, Any?> = emptyMap(),
+        operationName: String? = null,
+        version: Int = 1,
+    ): Map<String, Any?> {
+        val persisted = mapOf(
+            "persistedQuery" to mapOf(
+                "version" to version,
+                "sha256Hash" to sha256Hash,
+            ),
+        )
+        return this.query(
+            GraphQLRequest(
+                query = queryText ?: "",
+                variables = variables,
+                operationName = operationName,
+                extensions = persisted,
+            ),
+        )
     }
 }
 

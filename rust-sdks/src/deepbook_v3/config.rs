@@ -13,6 +13,7 @@ pub struct PackageIds {
     pub deep_treasury_id: String,
     pub margin_package_id: String,
     pub margin_registry_id: String,
+    pub liquidation_package_id: String,
 }
 
 #[derive(Debug, Clone)]
@@ -99,6 +100,8 @@ pub fn testnet_package_ids() -> PackageIds {
             "0xd6a42f4df4db73d68cbeb52be66698d2fe6a9464f45ad113ca52b0c6ebd918b6".to_string(),
         margin_registry_id:
             "0x48d7640dfae2c6e9ceeada197a7a1643984b5a24c55a0c6c023dac77e0339f75".to_string(),
+        liquidation_package_id:
+            "0x8d69c3ef3ef580e5bf87b933ce28de19a5d0323588d1a44b9c60b4001741aa24".to_string(),
     }
 }
 

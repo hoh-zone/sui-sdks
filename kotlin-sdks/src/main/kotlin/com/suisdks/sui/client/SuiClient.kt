@@ -2,19 +2,47 @@ package com.suisdks.sui.client
 
 import com.suisdks.sui.jsonrpc.JsonRpcClient
 import com.suisdks.sui.pagination.iterPaginatedItems
+import com.suisdks.sui.transactions.Transaction
+import java.util.Base64
+import java.util.concurrent.CancellationException
 
 private const val DEFAULT_COIN_TYPE = "0x2::sui::SUI"
 
 class SuiClient(private val rpc: JsonRpcClient) {
     companion object {
-        fun fromNetwork(network: String = "testnet"): SuiClient = SuiClient(JsonRpcClient.fromNetwork(network))
+        fun fromNetwork(
+            network: String = "testnet",
+            timeoutMs: Int = 30_000,
+            headers: Map<String, String> = emptyMap(),
+        ): SuiClient = SuiClient(JsonRpcClient.fromNetwork(network, timeoutMs, headers))
+
+        fun fromEndpoint(
+            endpoint: String,
+            timeoutMs: Int = 30_000,
+            headers: Map<String, String> = emptyMap(),
+        ): SuiClient = SuiClient(JsonRpcClient.fromEndpoint(endpoint, timeoutMs, headers))
     }
 
     fun execute(method: String, params: List<Any?> = emptyList()): Map<String, Any?> = rpc.call(method, params)
 
+    fun rpc(): JsonRpcClient = rpc
+
     fun discoverRpcApi(): Map<String, Any?> = mapResult("rpc.discover")
 
+    fun getRpcApiVersion(): String? {
+        val discover = discoverRpcApi()
+        return discover["info"]?.let { info ->
+            @Suppress("UNCHECKED_CAST")
+            (info as? Map<String, Any?>)?.get("version")?.toString()
+        }
+    }
+
     fun dryRun(txBytesB64: String): Map<String, Any?> = mapResult("sui_dryRunTransactionBlock", txBytesB64)
+
+    fun dryRunTransactionBlock(txBytesB64: String): Map<String, Any?> = dryRun(txBytesB64)
+
+    fun devInspectTransactionBlock(sender: String, txBytesB64: String): Map<String, Any?> =
+        mapResult("sui_devInspectTransactionBlock", sender, txBytesB64)
 
     fun getObject(objectId: String, options: Map<String, Any?> = emptyMap()): Map<String, Any?> =
         mapResult("sui_getObject", objectId, options)
@@ -23,7 +51,7 @@ class SuiClient(private val rpc: JsonRpcClient) {
         objectIds.map { getObject(it, options) }
 
     fun multiGetObjects(objectIds: List<String>, options: Map<String, Any?> = emptyMap()): Map<String, Any?> =
-        mapResult("sui_multiGetObjects", objectIds, options)
+        mapResult("sui_multiGetObjects", requireNoDuplicates(objectIds, "objectIds"), options)
 
     fun getEvents(
         query: Map<String, Any?>,
@@ -130,6 +158,13 @@ class SuiClient(private val rpc: JsonRpcClient) {
 
     fun getReferenceGasPrice(): Map<String, Any?> = mapResult("suix_getReferenceGasPrice")
 
+    fun verifyZkLoginSignature(
+        bytes: String,
+        signature: String,
+        intentScope: Int,
+        author: String,
+    ): Map<String, Any?> = mapResult("sui_verifyZkLoginSignature", bytes, signature, intentScope, author)
+
     fun getLatestCheckpointSequenceNumber(): Any? = result("sui_getLatestCheckpointSequenceNumber")
 
     fun queryTransactionBlocks(
@@ -157,7 +192,7 @@ class SuiClient(private val rpc: JsonRpcClient) {
     fun getTotalTransactionBlocks(): Any? = result("sui_getTotalTransactionBlocks")
 
     fun multiGetTransactionBlocks(digests: List<String>, options: Map<String, Any?> = emptyMap()): Map<String, Any?> =
-        mapResult("sui_multiGetTransactionBlocks", digests, options)
+        mapResult("sui_multiGetTransactionBlocks", requireNoDuplicates(digests, "digests"), options)
 
     fun getEventsByTransaction(transactionDigest: String): Map<String, Any?> =
         mapResult("sui_getEvents", transactionDigest)
@@ -181,6 +216,23 @@ class SuiClient(private val rpc: JsonRpcClient) {
     fun getCommitteeInfo(epoch: String? = null): Map<String, Any?> = mapResult("suix_getCommitteeInfo", epoch)
 
     fun getProtocolConfig(version: String? = null): Map<String, Any?> = mapResult("sui_getProtocolConfig", version)
+
+    fun getNetworkMetrics(): Map<String, Any?> = mapResult("suix_getNetworkMetrics")
+
+    fun getAddressMetrics(): Map<String, Any?> = mapResult("suix_getLatestAddressMetrics")
+
+    fun getEpochMetrics(cursor: String? = null, limit: Int? = null, descendingOrder: Boolean = false): Map<String, Any?> =
+        mapResult("suix_getEpochMetrics", cursor, limit, descendingOrder)
+
+    fun getAllEpochAddressMetrics(descendingOrder: Boolean = false): Map<String, Any?> =
+        mapResult("suix_getAllEpochAddressMetrics", descendingOrder)
+
+    fun getEpochs(cursor: String? = null, limit: Int? = null, descendingOrder: Boolean = false): Map<String, Any?> =
+        mapResult("suix_getEpochs", cursor, limit, descendingOrder)
+
+    fun getMoveCallMetrics(): Map<String, Any?> = mapResult("suix_getMoveCallMetrics")
+
+    fun getCurrentEpoch(): Map<String, Any?> = mapResult("suix_getCurrentEpoch")
 
     fun getChainIdentifier(): Any? = result("sui_getChainIdentifier")
 
@@ -216,6 +268,92 @@ class SuiClient(private val rpc: JsonRpcClient) {
     fun getNormalizedMoveStruct(packageId: String, moduleName: String, structName: String): Map<String, Any?> =
         mapResult("sui_getNormalizedMoveStruct", packageId, moduleName, structName)
 
+    fun executeTransactionBlock(
+        transactionBlock: String,
+        signature: String,
+        options: Map<String, Any?> = emptyMap(),
+    ): Map<String, Any?> = mapResult("sui_executeTransactionBlock", transactionBlock, listOf(signature), options)
+
+    fun executeTransactionBlock(
+        transactionBlock: ByteArray,
+        signature: String,
+        options: Map<String, Any?> = emptyMap(),
+    ): Map<String, Any?> = executeTransactionBlock(
+        transactionBlock = Base64.getEncoder().encodeToString(transactionBlock),
+        signature = signature,
+        options = options,
+    )
+
+    fun executeTransactionBlock(
+        transactionBlock: String,
+        signatures: List<String>,
+        options: Map<String, Any?> = emptyMap(),
+    ): Map<String, Any?> = mapResult("sui_executeTransactionBlock", transactionBlock, signatures, options)
+
+    fun executeTransactionBlock(
+        transactionBlock: ByteArray,
+        signatures: List<String>,
+        options: Map<String, Any?> = emptyMap(),
+    ): Map<String, Any?> = executeTransactionBlock(
+        transactionBlock = Base64.getEncoder().encodeToString(transactionBlock),
+        signatures = signatures,
+        options = options,
+    )
+
+    fun signAndExecuteTransaction(
+        transaction: Transaction,
+        signer: TransactionSigner,
+        options: Map<String, Any?> = emptyMap(),
+    ): Map<String, Any?> {
+        transaction.setSenderIfNotSet(signer.toSuiAddress())
+        val txBytes = transaction.build()
+        val signed = signer.signTransaction(txBytes)
+        return executeTransactionBlock(
+            transactionBlock = Base64.getEncoder().encodeToString(signed.bytes),
+            signature = signed.signature,
+            options = options,
+        )
+    }
+
+    fun signAndExecuteTransaction(
+        transactionBytes: ByteArray,
+        signer: TransactionSigner,
+        options: Map<String, Any?> = emptyMap(),
+    ): Map<String, Any?> {
+        val signed = signer.signTransaction(transactionBytes)
+        return executeTransactionBlock(
+            transactionBlock = signed.bytes,
+            signature = signed.signature,
+            options = options,
+        )
+    }
+
+    fun waitForTransaction(
+        digest: String,
+        options: Map<String, Any?> = emptyMap(),
+        timeoutMs: Long = 60_000,
+        pollIntervalMs: Long = 2_000,
+        shouldCancel: (() -> Boolean)? = null,
+    ): Map<String, Any?> {
+        require(timeoutMs > 0) { "timeoutMs must be positive" }
+        require(pollIntervalMs > 0) { "pollIntervalMs must be positive" }
+
+        val deadline = System.currentTimeMillis() + timeoutMs
+        var lastError: Throwable? = null
+        while (System.currentTimeMillis() < deadline) {
+            if (shouldCancel?.invoke() == true) {
+                throw CancellationException("waitForTransaction cancelled for digest=$digest")
+            }
+            try {
+                return getTransactionBlock(digest, options)
+            } catch (e: Throwable) {
+                lastError = e
+                Thread.sleep(pollIntervalMs)
+            }
+        }
+        throw IllegalStateException("waitForTransaction timed out for digest=$digest", lastError)
+    }
+
     fun close() {
         // JsonRpcClient uses per-request connection and keeps no persistent session.
     }
@@ -229,4 +367,19 @@ class SuiClient(private val rpc: JsonRpcClient) {
         @Suppress("UNCHECKED_CAST")
         return result as? Map<String, Any?> ?: mapOf("result" to result)
     }
+
+    private fun <T> requireNoDuplicates(values: List<T>, field: String): List<T> {
+        require(values.size == values.toSet().size) { "Duplicate values in $field: $values" }
+        return values
+    }
+}
+
+data class SignedTransaction(
+    val signature: String,
+    val bytes: ByteArray,
+)
+
+fun interface TransactionSigner {
+    fun signTransaction(bytes: ByteArray): SignedTransaction
+    fun toSuiAddress(): String = ""
 }

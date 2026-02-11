@@ -6,7 +6,11 @@ import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
 
-class HttpJsonRpcTransport(private val endpoint: String) : JsonRpcTransport {
+class HttpJsonRpcTransport(
+    private val endpoint: String,
+    private val timeoutMs: Int = 30_000,
+    private val headers: Map<String, String> = emptyMap(),
+) : JsonRpcTransport {
     private val gson = Gson()
 
     override fun request(method: String, params: List<Any?>): Map<String, Any?> {
@@ -14,6 +18,9 @@ class HttpJsonRpcTransport(private val endpoint: String) : JsonRpcTransport {
             val conn = (URL(endpoint).openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
                 setRequestProperty("Content-Type", "application/json")
+                headers.forEach { (k, v) -> setRequestProperty(k, v) }
+                connectTimeout = timeoutMs
+                readTimeout = timeoutMs
                 doOutput = true
             }
 

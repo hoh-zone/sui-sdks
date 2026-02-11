@@ -4,6 +4,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ExecutionException
 
 class ResolverAndExecutorTest {
     @Test
@@ -30,6 +32,29 @@ class ResolverAndExecutorTest {
 
         val err = assertFailsWith<ResolverPluginError> { resolver.resolve(tx) }
         assertTrue(err.message!!.contains("resolver plugin failed"))
+    }
+
+    @Test
+    fun asyncResolverRunsPluginsAndWrapsErrors() {
+        val tx = Transaction()
+        tx.obj("0x1")
+
+        val resolver = AsyncResolver().apply {
+            addPlugin { context ->
+                context.unresolvedInputs.add(mapOf("\$kind" to "UnresolvedObject", "UnresolvedObject" to mapOf("objectId" to "0x2")))
+                CompletableFuture.completedFuture(Unit)
+            }
+        }
+        val context = resolver.resolve(tx).get()
+        assertEquals(2, context.unresolvedInputs.size)
+
+        val failing = AsyncResolver().apply {
+            addPlugin { CompletableFuture.failedFuture(IllegalStateException("boom")) }
+        }
+        val err = assertFailsWith<ExecutionException> {
+            failing.resolve(tx).get()
+        }
+        assertTrue((err.cause as? ResolverPluginError)?.message?.contains("resolver plugin failed") == true)
     }
 
     @Test

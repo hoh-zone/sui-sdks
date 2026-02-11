@@ -26,6 +26,8 @@ pub enum ClientError {
     MissingReturnValue { command_index: usize, return_index: usize },
     #[error("invalid bcs return value")]
     InvalidBcsValue,
+    #[error("missing price_info_object_id for coin `{0}`")]
+    MissingPriceInfoObject(String),
     #[error(transparent)]
     Base64(#[from] base64::DecodeError),
 }
@@ -353,6 +355,27 @@ impl DeepBookClient {
         self.read_return_bcs_base64(&sim, 0, 0)
     }
 
+    pub async fn get_order_normalized(
+        &self,
+        pool_key: &str,
+        order_id: u128,
+    ) -> Result<Value, ClientError> {
+        let pool = self.config.get_pool(pool_key)?;
+        let base = self.config.get_coin(&pool.base_coin)?;
+        let quote = self.config.get_coin(&pool.quote_coin)?;
+        let raw_order_bcs = self.get_order(pool_key, order_id).await?;
+        let (is_bid, raw_price, decoded_order_id) = self.decode_order_id(order_id);
+        let normalized_price = (raw_price as f64 * base.scalar as f64) / (FLOAT_SCALAR * quote.scalar as f64);
+        Ok(json!({
+            "orderId": order_id.to_string(),
+            "decodedOrderId": decoded_order_id.to_string(),
+            "isBid": is_bid,
+            "rawPrice": raw_price.to_string(),
+            "normalizedPrice": format!("{normalized_price:.9}"),
+            "rawOrderBcs": raw_order_bcs,
+        }))
+    }
+
     pub async fn account_open_orders(
         &self,
         pool_key: &str,
@@ -542,6 +565,27 @@ impl DeepBookClient {
             }
             _ => Ok(-1),
         }
+    }
+
+    pub async fn get_price_info_object(&self, coin_key: &str) -> Result<String, ClientError> {
+        let coin = self.config.get_coin(coin_key)?;
+        let price_info = coin
+            .price_info_object_id
+            .clone()
+            .ok_or_else(|| ClientError::MissingPriceInfoObject(coin_key.to_string()))?;
+        Ok(normalize_sui_address(&price_info))
+    }
+
+    pub async fn get_price_info_objects(
+        &self,
+        coin_keys: &[&str],
+    ) -> Result<Value, ClientError> {
+        let mut out = serde_json::Map::new();
+        for key in coin_keys {
+            let id = self.get_price_info_object(key).await?;
+            out.insert((*key).to_string(), Value::String(id));
+        }
+        Ok(Value::Object(out))
     }
 
     pub async fn get_quote_quantity_out_input_fee(
@@ -1536,6 +1580,20 @@ impl DeepBookClient {
         let sim = self.simulate(&tx).await?;
         let ids = self.read_vec_u64(&sim, 0, 0)?;
         Ok(ids.into_iter().map(|id| id.to_string()).collect())
+    }
+
+    pub async fn get_conditional_order(
+        &self,
+        margin_manager_key: &str,
+        conditional_order_id: u64,
+    ) -> Result<String, ClientError> {
+        let margin_tpsl = MarginTPSLContract {
+            config: &self.config,
+        };
+        let mut tx = Transaction::new();
+        margin_tpsl.conditional_order(&mut tx, margin_manager_key, conditional_order_id)?;
+        let sim = self.simulate(&tx).await?;
+        self.read_return_bcs_base64(&sim, 0, 0)
     }
 
     pub async fn get_lowest_trigger_above_price(

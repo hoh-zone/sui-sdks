@@ -10,11 +10,12 @@ Dart implementation workspace aligned with `ts-sdks` / `go-sdks` / `py-sdks` eff
 - `dart_sdks.sui`
   - `JsonRpcClient` with network defaults and pluggable transport
   - `GraphQlClient` powered by official Dart `graphql` package
+    - includes helper methods: `query`, `mutation`, `getBalance`, `getAllBalances`, `iterAllBalances`, `getCoins`, `iterCoins`, `getOwnedObjects`, `iterOwnedObjects`, `getDynamicFields`, `iterDynamicFields`, `getCoinMetadata`, `getTotalSupply`, `getDefaultSuinsName`, `resolveNameServiceAddress`, `resolveNameServiceNames`, `getObject`, `multiGetObjects`, `getEventsByTransaction`, `queryEvents`, `iterEvents`, `queryTransactionBlocks`, `iterTransactionBlocks`, `getMoveFunction`, `simulateTransaction`, `resolveTransaction`, `getTransactionBlock`, `executeTransactionBlock`, `getCheckpoint`, `getCheckpoints`, `iterCheckpoints`, `getLatestCheckpointSequenceNumber`, `getChainIdentifier`, `getProtocolConfig`, `getReferenceGasPrice`, `getCurrentSystemState`, `getLatestSuiSystemState`
   - `SuiGrpcClient` powered by official Dart `grpc` + `protobuf` packages
     - includes `fromStubInvoker(...)` adapter for integrating generated official protobuf stubs
-    - includes helper methods: `discoverRpcApi`, `getCoins`, `getAllCoins`, `getBalance`, `getAllBalances`, `getObject`, `getOwnedObjects`, `getDynamicFields`, `multiGetObjects`, `getTransactionBlock`, `queryTransactionBlocks`, `queryEvents`, `getCheckpoints`, `getReferenceGasPrice`, `getLatestSuiSystemState`, `resolveNameServiceAddress`, `resolveNameServiceNames`, `executeTransactionBlock`
+    - includes helper methods: `discoverRpcApi`, `dryRun`, `getCoins`, `getGas`, `getAllCoins`, `iterAllCoins`, `getBalance`, `getAllBalances`, `getCoinMetadata`, `getTotalSupply`, `getObject`, `getPackage`, `getOwnedObjects`, `iterOwnedObjects`, `getDynamicFields`, `iterDynamicFields`, `getDynamicFieldObject`, `multiGetObjects`, `getTransactionBlock`, `multiGetTransactionBlocks`, `getEventsByTransaction`, `queryTransactionBlocks`, `iterTransactionBlocks`, `queryEvents`, `getEvents`, `iterEvents`, `getCheckpoint`, `getCheckpoints`, `iterCheckpoints`, `getReferenceGasPrice`, `getLatestSuiSystemState`, `getValidatorsApy`, `getCommitteeInfo`, `getProtocolConfig`, `getChainIdentifier`, `getStakes`, `getStakesByIds`, `tryGetPastObject`, `tryMultiGetPastObjects`, `getNormalizedMoveModulesByPackage`, `getNormalizedMoveModule`, `getNormalizedMoveFunction`, `getMoveFunctionArgTypes`, `getNormalizedMoveStruct`, `resolveNameServiceAddress`, `resolveNameServiceNames`, `executeTransactionBlock`
     - supports configurable method mapping (`identityGrpcMethodMapper` / `defaultJsonRpcToGrpcMethodMapper`) for JSON-RPC style and gRPC-style method names
-  - `Ed25519Keypair` + `Secp256r1Keypair` + verify helpers powered by official Dart `cryptography` package
+  - `Ed25519Keypair` + verify helpers powered by official Dart `cryptography` package
   - `multisig` baseline
   - `FaucetClient` + `FaucetRateLimitError`
   - `SuiClient` JSON-RPC facade (coin/object/events/tx/checkpoint/name-service helpers + paginated stream helpers)
@@ -63,3 +64,4 @@ Future<void> main() async {
 
 - This is a baseline implementation for practical parity expansion, not full parity with `ts-sdks` yet.
 - `secp256k1` keypair/signature support is not included yet (official `dart:cryptography` does not provide secp256k1 primitives).
+- `secp256r1` keypair generation/signing is currently unavailable on pure Dart runtime in `cryptography`; raw verification helpers remain available for compatible public key formats.

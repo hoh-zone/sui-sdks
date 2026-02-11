@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import IntEnum
+from typing import Optional
 
 
 @dataclass
@@ -25,6 +26,8 @@ class Coin:
     address: str
     type: str
     scalar: float
+    feed: Optional[str] = None
+    price_info_object_id: Optional[str] = None
 
 
 @dataclass

@@ -1,6 +1,7 @@
 package com.suisdks.sui.client
 
 import com.suisdks.sui.jsonrpc.JsonRpcClient
+import com.suisdks.sui.transactions.Transaction
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executor
 import java.util.concurrent.ForkJoinPool
@@ -10,8 +11,23 @@ class AsyncSuiClient private constructor(
     private val executor: Executor,
 ) {
     companion object {
-        fun fromNetwork(network: String = "testnet", executor: Executor = ForkJoinPool.commonPool()): AsyncSuiClient {
-            val rpc = JsonRpcClient.fromNetwork(network)
+        fun fromNetwork(
+            network: String = "testnet",
+            timeoutMs: Int = 30_000,
+            headers: Map<String, String> = emptyMap(),
+            executor: Executor = ForkJoinPool.commonPool(),
+        ): AsyncSuiClient {
+            val rpc = JsonRpcClient.fromNetwork(network, timeoutMs, headers)
+            return AsyncSuiClient(SuiClient(rpc), executor)
+        }
+
+        fun fromEndpoint(
+            endpoint: String,
+            timeoutMs: Int = 30_000,
+            headers: Map<String, String> = emptyMap(),
+            executor: Executor = ForkJoinPool.commonPool(),
+        ): AsyncSuiClient {
+            val rpc = JsonRpcClient.fromEndpoint(endpoint, timeoutMs, headers)
             return AsyncSuiClient(SuiClient(rpc), executor)
         }
 
@@ -23,9 +39,19 @@ class AsyncSuiClient private constructor(
     fun execute(method: String, params: List<Any?> = emptyList()): CompletableFuture<Map<String, Any?>> =
         CompletableFuture.supplyAsync({ client.execute(method, params) }, executor)
 
+    fun rpc() = client.rpc()
+
     fun discoverRpcApi() = async { client.discoverRpcApi() }
 
+    fun getRpcApiVersion() = async { client.getRpcApiVersion() }
+
     fun dryRun(txBytesB64: String) = async { client.dryRun(txBytesB64) }
+
+    fun dryRunTransactionBlock(txBytesB64: String) = async { client.dryRunTransactionBlock(txBytesB64) }
+
+    fun devInspectTransactionBlock(sender: String, txBytesB64: String) = async {
+        client.devInspectTransactionBlock(sender, txBytesB64)
+    }
 
     fun getObject(objectId: String, options: Map<String, Any?> = emptyMap()) = async { client.getObject(objectId, options) }
 
@@ -112,6 +138,13 @@ class AsyncSuiClient private constructor(
 
     fun getReferenceGasPrice() = async { client.getReferenceGasPrice() }
 
+    fun verifyZkLoginSignature(
+        bytes: String,
+        signature: String,
+        intentScope: Int,
+        author: String,
+    ) = async { client.verifyZkLoginSignature(bytes, signature, intentScope, author) }
+
     fun getLatestCheckpointSequenceNumber() = async { client.getLatestCheckpointSequenceNumber() }
 
     fun queryTransactionBlocks(
@@ -158,6 +191,26 @@ class AsyncSuiClient private constructor(
 
     fun getProtocolConfig(version: String? = null) = async { client.getProtocolConfig(version) }
 
+    fun getNetworkMetrics() = async { client.getNetworkMetrics() }
+
+    fun getAddressMetrics() = async { client.getAddressMetrics() }
+
+    fun getEpochMetrics(cursor: String? = null, limit: Int? = null, descendingOrder: Boolean = false) = async {
+        client.getEpochMetrics(cursor, limit, descendingOrder)
+    }
+
+    fun getAllEpochAddressMetrics(descendingOrder: Boolean = false) = async {
+        client.getAllEpochAddressMetrics(descendingOrder)
+    }
+
+    fun getEpochs(cursor: String? = null, limit: Int? = null, descendingOrder: Boolean = false) = async {
+        client.getEpochs(cursor, limit, descendingOrder)
+    }
+
+    fun getMoveCallMetrics() = async { client.getMoveCallMetrics() }
+
+    fun getCurrentEpoch() = async { client.getCurrentEpoch() }
+
     fun getChainIdentifier() = async { client.getChainIdentifier() }
 
     fun resolveNameServiceAddress(name: String) = async { client.resolveNameServiceAddress(name) }
@@ -197,6 +250,50 @@ class AsyncSuiClient private constructor(
     fun getNormalizedMoveStruct(packageId: String, moduleName: String, structName: String) = async {
         client.getNormalizedMoveStruct(packageId, moduleName, structName)
     }
+
+    fun executeTransactionBlock(
+        transactionBlock: String,
+        signature: String,
+        options: Map<String, Any?> = emptyMap(),
+    ) = async { client.executeTransactionBlock(transactionBlock, signature, options) }
+
+    fun executeTransactionBlock(
+        transactionBlock: ByteArray,
+        signature: String,
+        options: Map<String, Any?> = emptyMap(),
+    ) = async { client.executeTransactionBlock(transactionBlock, signature, options) }
+
+    fun executeTransactionBlock(
+        transactionBlock: String,
+        signatures: List<String>,
+        options: Map<String, Any?> = emptyMap(),
+    ) = async { client.executeTransactionBlock(transactionBlock, signatures, options) }
+
+    fun executeTransactionBlock(
+        transactionBlock: ByteArray,
+        signatures: List<String>,
+        options: Map<String, Any?> = emptyMap(),
+    ) = async { client.executeTransactionBlock(transactionBlock, signatures, options) }
+
+    fun signAndExecuteTransaction(
+        transaction: Transaction,
+        signer: TransactionSigner,
+        options: Map<String, Any?> = emptyMap(),
+    ) = async { client.signAndExecuteTransaction(transaction, signer, options) }
+
+    fun signAndExecuteTransaction(
+        transactionBytes: ByteArray,
+        signer: TransactionSigner,
+        options: Map<String, Any?> = emptyMap(),
+    ) = async { client.signAndExecuteTransaction(transactionBytes, signer, options) }
+
+    fun waitForTransaction(
+        digest: String,
+        options: Map<String, Any?> = emptyMap(),
+        timeoutMs: Long = 60_000,
+        pollIntervalMs: Long = 2_000,
+        shouldCancel: (() -> Boolean)? = null,
+    ) = async { client.waitForTransaction(digest, options, timeoutMs, pollIntervalMs, shouldCancel) }
 
     fun close(): CompletableFuture<Unit> = async {
         client.close()
