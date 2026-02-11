@@ -1,4 +1,9 @@
 export 'client.dart';
 export 'config.dart';
 export 'transactions/transactions.dart';
+export 'transactions/contracts.dart';
+export 'transactions/debate.dart';
+export 'transactions/admin.dart';
+export 'transactions/liquidation.dart';
+export 'transactions/advanced_queries.dart';
 export 'types.dart';
