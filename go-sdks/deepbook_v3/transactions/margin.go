@@ -82,6 +82,15 @@ func (c *MarginManagerContract) DepositQuote(tx *stx.Transaction, params types.D
 	}, []string{base.Type, quote.Type, quote.Type})
 }
 
+func (c *MarginManagerContract) DepositDeep(tx *stx.Transaction, params types.DepositParams) stx.Argument {
+	base, quote, manager, _ := c.managerTypes(params.ManagerKey)
+	deep := c.config.GetCoin("DEEP")
+	amount := uint64(math.Round(params.Amount * deep.Scalar))
+	return tx.MoveCall(c.config.MarginPackageID+"::margin_manager::deposit", []stx.Argument{
+		tx.Object(manager.Address), pureU64(tx, amount), tx.Object(c.config.MarginRegistryID),
+	}, []string{base.Type, quote.Type, deep.Type})
+}
+
 func (c *MarginManagerContract) WithdrawBase(tx *stx.Transaction, managerKey string, amount float64) stx.Argument {
 	base, quote, manager, _ := c.managerTypes(managerKey)
 	input := uint64(math.Round(amount * base.Scalar))
@@ -164,6 +173,10 @@ func (c *MarginManagerContract) OwnerByPoolKey(tx *stx.Transaction, poolKey, mar
 	}, []string{base.Type, quote.Type})
 }
 
+func (c *MarginManagerContract) Owner(tx *stx.Transaction, poolKey, marginManagerID string) stx.Argument {
+	return c.OwnerByPoolKey(tx, poolKey, marginManagerID)
+}
+
 func (c *MarginManagerContract) DeepbookPool(tx *stx.Transaction, poolKey, marginManagerID string) stx.Argument {
 	pool := c.config.GetPool(poolKey)
 	base := c.config.GetCoin(pool.BaseCoin)
@@ -227,6 +240,10 @@ func (c *MarginManagerContract) BalanceManagerByPoolKey(tx *stx.Transaction, poo
 	}, []string{base.Type, quote.Type})
 }
 
+func (c *MarginManagerContract) BalanceManager(tx *stx.Transaction, poolKey, marginManagerID string) stx.Argument {
+	return c.BalanceManagerByPoolKey(tx, poolKey, marginManagerID)
+}
+
 func (c *MarginManagerContract) CalculateAssets(tx *stx.Transaction, poolKey, marginManagerID string) stx.Argument {
 	pool := c.config.GetPool(poolKey)
 	base := c.config.GetCoin(pool.BaseCoin)
@@ -275,6 +292,10 @@ func (c *MarginManagerContract) ManagerState(tx *stx.Transaction, poolKey, margi
 		quoteMarginPoolObject,
 		tx.Object("0x6"),
 	}, []string{base.Type, quote.Type})
+}
+
+func (c *MarginManagerContract) ManagerStateByID(tx *stx.Transaction, poolKey, marginManagerID string) stx.Argument {
+	return c.ManagerState(tx, poolKey, marginManagerID)
 }
 
 func (c *MarginManagerContract) BaseBalance(tx *stx.Transaction, poolKey, marginManagerID string) stx.Argument {
@@ -631,6 +652,15 @@ func (c *MarginRegistryContract) QuoteMarginPoolID(tx *stx.Transaction, poolKey 
 	}, nil)
 }
 
+func (c *MarginRegistryContract) GetDeepbookPoolMarginPoolIDs(tx *stx.Transaction, poolKey string) stx.Argument {
+	pool := c.config.GetPool(poolKey)
+	base := c.config.GetCoin(pool.BaseCoin)
+	quote := c.config.GetCoin(pool.QuoteCoin)
+	return tx.MoveCall(c.config.MarginPackageID+"::margin_registry::get_deepbook_pool_margin_pool_ids", []stx.Argument{
+		tx.Object(c.config.MarginRegistryID), tx.Object(pool.Address),
+	}, []string{base.Type, quote.Type})
+}
+
 func (c *MarginRegistryContract) MinWithdrawRiskRatio(tx *stx.Transaction, poolKey string) stx.Argument {
 	pool := c.config.GetPool(poolKey)
 	return tx.MoveCall(c.config.MarginPackageID+"::margin_registry::min_withdraw_risk_ratio", []stx.Argument{
@@ -817,6 +847,15 @@ func (c *PoolProxyContract) WithdrawSettledAmounts(tx *stx.Transaction, marginMa
 	quote := c.config.GetCoin(pool.QuoteCoin)
 	return tx.MoveCall(c.config.MarginPackageID+"::pool_proxy::withdraw_settled_amounts", []stx.Argument{
 		tx.Object(manager.Address), tx.Object(c.config.MarginRegistryID),
+	}, []string{base.Type, quote.Type})
+}
+
+func (c *PoolProxyContract) WithdrawMarginSettledAmounts(tx *stx.Transaction, poolKey, marginManagerID string) stx.Argument {
+	pool := c.config.GetPool(poolKey)
+	base := c.config.GetCoin(pool.BaseCoin)
+	quote := c.config.GetCoin(pool.QuoteCoin)
+	return tx.MoveCall(c.config.MarginPackageID+"::pool_proxy::withdraw_settled_amounts_permissionless", []stx.Argument{
+		tx.Object(c.config.MarginRegistryID), tx.Object(marginManagerID), tx.Object(pool.Address),
 	}, []string{base.Type, quote.Type})
 }
 

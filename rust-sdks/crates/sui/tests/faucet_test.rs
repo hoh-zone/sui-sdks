@@ -1,6 +1,6 @@
 use httpmock::Method::POST;
 use httpmock::MockServer;
-use sui::sui::faucet::{get_faucet_host, FaucetClient, FaucetError};
+use sui::faucet::{get_faucet_host, FaucetClient, FaucetError};
 
 #[tokio::test]
 async fn faucet_request_success() {

@@ -1,84 +1,83 @@
 package transactions
 
 import (
+	"math"
+
 	"github.com/sui-sdks/go-sdks/deepbook_v3/types"
 	"github.com/sui-sdks/go-sdks/deepbook_v3/utils"
-	"github.com/sui-sdks/go-sdks/stx"
+	stx "github.com/sui-sdks/go-sdks/sui/transactions"
 )
 
 type GovernanceContract struct {
-	config *utils.DeepBookConfig
+	config         *utils.DeepBookConfig
+	balanceManager *BalanceManagerContract
 }
 
-type GovernanceCommand struct {
-	proposalId string
-	approval   uint8
+func NewGovernanceContract(config *utils.DeepBookConfig, balanceManager *BalanceManagerContract) *GovernanceContract {
+	return &GovernanceContract{config: config, balanceManager: balanceManager}
 }
 
-func NewGovernanceContract(config *utils.DeepBookConfig) *GovernanceContract {
-	return &GovernanceContract{config: config}
-}
-
-func (c *GovernanceContract) CreateProposal(tx *stx.Transaction, cmd GovernanceCommand) {
+func (c *GovernanceContract) Stake(tx *stx.Transaction, poolKey, balanceManagerKey string, stakeAmount float64) stx.Argument {
+	pool := c.config.GetPool(poolKey)
+	manager := c.config.GetBalanceManager(balanceManagerKey)
+	base := c.config.GetCoin(pool.BaseCoin)
+	quote := c.config.GetCoin(pool.QuoteCoin)
+	stake := uint64(math.Round(stakeAmount * utils.DeepScalar))
+	proof := c.balanceManager.GenerateProof(tx, balanceManagerKey)
 	tx.SetGasBudgetIfNotSet(utils.GasBudget)
-
-	_, _, _ = tx.MakeMoveVec(tx.Object("0x6"))
-
-	return tx.MoveCall(c.poolTarget("create_proposal"), []stx.Argument{
-		tx.Object("0x6"),
-		tx.PureBytes([]byte(cmd.ProposalId)),
-	})
+	return tx.MoveCall(c.config.DeepbookPackageID+"::pool::stake", []stx.Argument{
+		tx.Object(pool.Address),
+		tx.Object(manager.Address),
+		proof,
+		pureU64(tx, stake),
+	}, []string{base.Type, quote.Type})
 }
 
-func (c *GovernanceContract) ApproveProposal(tx *stx.Transaction, cmd GovernanceCommand) {
+func (c *GovernanceContract) Unstake(tx *stx.Transaction, poolKey, balanceManagerKey string) stx.Argument {
+	pool := c.config.GetPool(poolKey)
+	manager := c.config.GetBalanceManager(balanceManagerKey)
+	base := c.config.GetCoin(pool.BaseCoin)
+	quote := c.config.GetCoin(pool.QuoteCoin)
+	proof := c.balanceManager.GenerateProof(tx, balanceManagerKey)
 	tx.SetGasBudgetIfNotSet(utils.GasBudget)
-
-	_, _, _ = tx.MakeMoveVec(tx.Object("0x6"))
-
-	return tx.MoveCall(c.poolTarget("approve_proposal"), []stx.Argument{
-		tx.Object("0x6"),
-		tx.PureBytes([]byte(cmd.ProposalId), tx.PureU8(cmd.Approval)),
-	})
+	return tx.MoveCall(c.config.DeepbookPackageID+"::pool::unstake", []stx.Argument{
+		tx.Object(pool.Address),
+		tx.Object(manager.Address),
+		proof,
+	}, []string{base.Type, quote.Type})
 }
 
-func (c *GovernanceContract) ExecuteProposal(tx *stx.Transaction, cmd GovernanceCommand) {
+func (c *GovernanceContract) SubmitProposal(tx *stx.Transaction, params types.ProposalParams) stx.Argument {
+	pool := c.config.GetPool(params.PoolKey)
+	manager := c.config.GetBalanceManager(params.BalanceManagerKey)
+	base := c.config.GetCoin(pool.BaseCoin)
+	quote := c.config.GetCoin(pool.QuoteCoin)
+	proof := c.balanceManager.GenerateProof(tx, params.BalanceManagerKey)
+	takerFee := uint64(math.Round(params.TakerFee * utils.FloatScalar))
+	makerFee := uint64(math.Round(params.MakerFee * utils.FloatScalar))
+	stakeRequired := uint64(math.Round(params.StakeRequired * utils.DeepScalar))
 	tx.SetGasBudgetIfNotSet(utils.GasBudget)
-
-	_, _, _ = tx.MakeMoveVec(tx.Object("0x6"))
-
-	return tx.MoveCall(c.poolTarget("execute_proposal"), []stx.Argument{
-		tx.Object("0x6"),
-		tx.PureBytes([]byte(cmd.ProposalId)),
-	})
+	return tx.MoveCall(c.config.DeepbookPackageID+"::pool::submit_proposal", []stx.Argument{
+		tx.Object(pool.Address),
+		tx.Object(manager.Address),
+		proof,
+		pureU64(tx, takerFee),
+		pureU64(tx, makerFee),
+		pureU64(tx, stakeRequired),
+	}, []string{base.Type, quote.Type})
 }
 
-func (c *GovernanceContract) VoteProposal(tx *stx.Transaction, cmd GovernanceCommand) {
+func (c *GovernanceContract) Vote(tx *stx.Transaction, poolKey, balanceManagerKey, proposalID string) stx.Argument {
+	pool := c.config.GetPool(poolKey)
+	manager := c.config.GetBalanceManager(balanceManagerKey)
+	base := c.config.GetCoin(pool.BaseCoin)
+	quote := c.config.GetCoin(pool.QuoteCoin)
+	proof := c.balanceManager.GenerateProof(tx, balanceManagerKey)
 	tx.SetGasBudgetIfNotSet(utils.GasBudget)
-
-	_, _, _ = tx.MakeMoveVec(tx.Object("0x6"))
-
-	return tx.MoveCall(c.poolTarget("vote_proposal"), []stx.Argument{
-		tx.Object("0x6"),
-		tx.PureBytes([]byte(cmd.ProposalId)),
-	})
-}
-
-func (c *GovernanceContract) CancelProposal(tx *stx.Transaction, cmd GovernanceCommand) {
-	tx.SetGasBudgetIfNotSet(utils.GasBudget)
-
-	_, _, _ = tx.MakeMoveVec(tx.Object("0x6"))
-
-	return tx.MoveCall(c.poolTarget("cancel_proposal"), []stx.Argument{
-		tx.Object("0x6"),
-		tx.PureBytes([]byte(cmd.ProposalId)),
-	})
-}
-
-func (c *GovernanceContract) SetAdminCap(tx *stx.Transaction, adminCap string) {
-	tx.SetGasBudgetIfNotSet(utils.GasBudget)
-
-	return tx.MoveCall(c.poolTarget("set_admin_cap"), []stx.Argument{
-		tx.Object("0x6"),
-		tx.Object("0x2::coin::Coin<0x2::coin::Coin>", adminCap),
-	})
+	return tx.MoveCall(c.config.DeepbookPackageID+"::pool::vote", []stx.Argument{
+		tx.Object(pool.Address),
+		tx.Object(manager.Address),
+		proof,
+		pureAddress(tx, proposalID),
+	}, []string{base.Type, quote.Type})
 }

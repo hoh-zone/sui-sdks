@@ -1,34 +1,43 @@
-# Deepbook TS-Go Conformance Plan
+# DeepBook TS-Go Conformance
 
-## Current Environment Status
+## Status
 
-In the current workspace, TypeScript deepbook package cannot be executed directly because:
+- P0 compile blockers fixed.
+- P1 API parity methods added for missing DeepBook v3 surfaces.
+- P2 conformance tests expanded with method-target matrix for newly added parity methods.
 
-- `pnpm` is not installed in PATH.
-- `corepack` is not available.
-- `ts-sdks` workspace has no installed `node_modules`.
+## P0 Completed
 
-So this iteration focuses on Go-side deterministic encoding/decoding tests first.
+- Removed broken duplicate flash-loan implementation file.
+- Fixed package import path issues (`stx` -> `sui/transactions` aliases).
+- Reworked `GovernanceContract` to a compilable implementation aligned with TS contract shape.
+- Resolved type name collision in `types` (`OrderType` duplicate) by renaming order-query enum.
+- Verified package builds and tests pass via:
+  - `go test ./deepbook_v3/...`
 
-## What is already covered in Go tests
+## P1 Completed (TS parity additions)
 
-- Move target mapping checks for major contracts.
-- BCS argument encoding checks for:
-  - `u64`
-  - `u128`
-  - `bool`
-  - `vector<u128>`
-- Client dry-run parsing happy-path and error-path checks.
+- `DeepBookAdminContract.AdjustMinLotSize`
+- `DeepBookContract.CreatePermissionlessPool`
+- `MarginManagerContract.DepositDeep`
+- `MarginRegistryContract.GetDeepbookPoolMarginPoolIDs`
+- `PoolProxyContract.WithdrawMarginSettledAmounts`
+- Governance parity surface:
+  - `GovernanceContract.Stake`
+  - `GovernanceContract.Unstake`
+  - `GovernanceContract.SubmitProposal`
+  - `GovernanceContract.Vote`
+- Margin admin/maintainer expanded with TS-style config and registry methods (add/remove config, version toggles, pause-cap flows, margin-pool config builders, and with-cap variants).
 
-## Next Step Once TS Runtime Is Available
+## P2 Completed (tests and matrix)
 
-1. Install and bootstrap TS workspace:
-   - `pnpm install` in `/Users/mac/work/sui-sdks/ts-sdks`
-2. Add a TS fixture generator script in `ts-sdks/packages/deepbook-v3`:
-   - Build representative transactions.
-   - Export normalized command payloads and selected pure-arg bytes as JSON.
-3. Add Go conformance tests to load these JSON fixtures and assert:
-   - same target function
-   - same type arguments
-   - same encoded pure argument bytes for key fields
+- Added conformance tests:
+  - `deepbook_v3/transactions/conformance_test.go`
+- New tests assert Move target mapping for:
+  - Governance parity methods
+  - New parity methods listed above
+- Existing encoding and contract target suites remain green.
 
+## Remaining Optional Work
+
+- Add fixture-based byte-level cross-SDK assertions generated from TS runtime (same target/type args/pure bytes) once TS workspace runtime dependencies are available.

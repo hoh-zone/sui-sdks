@@ -28,6 +28,16 @@ Python implementation workspace aligned with ts-sdks/go-sdks efforts.
   - dry-run style `DeepBookClient` baseline
   - transaction compatibility now reuses `pysdks.sui.transactions.Transaction`
   - encoding helpers (`u64/u128/bool/vector<u128>`)
+- `pysdks.walrus`
+  - `WalrusClient` baseline
+  - blob-id helpers and metadata computation
+  - storage-node client (`metadata/status/sliver/confirmation`)
+  - `WalrusFile` / `WalrusBlob` helpers
+- `pysdks.seal`
+  - `SealClient` baseline
+  - `SessionKey` lifecycle
+  - threshold encryption/decryption flow
+  - DEM implementations: `AesGcm256`, `Hmac256Ctr`
 
 ## Run tests
 

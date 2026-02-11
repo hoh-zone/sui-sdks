@@ -8,12 +8,12 @@ import (
 )
 
 type ClientOptions struct {
-	Network         string
-	BaseURL         string
-	RPC             *jsonrpc.Client
-	Transport       Transport
-	GRPCMethodPath  string
-	Timeout         time.Duration
+	Network        string
+	BaseURL        string
+	RPC            *jsonrpc.Client
+	Transport      Transport
+	GRPCMethodPath string
+	Timeout        time.Duration
 }
 
 type Client struct {
@@ -114,4 +114,34 @@ func (c *Client) VerifyZkLoginSignature(ctx context.Context, signature string, b
 }
 func (c *Client) DefaultNameServiceName(ctx context.Context, address string) (string, error) {
 	return c.Core.DefaultNameServiceName(ctx, address)
+}
+func (c *Client) QueryEvents(ctx context.Context, query map[string]any, cursor any, limit *int, descendingOrder bool) (map[string]any, error) {
+	return c.Core.QueryEvents(ctx, query, cursor, limit, descendingOrder)
+}
+func (c *Client) DryRunTransactionBlock(ctx context.Context, txBytesBase64 string) (map[string]any, error) {
+	return c.Core.DryRunTransactionBlock(ctx, txBytesBase64)
+}
+func (c *Client) GetProtocolConfig(ctx context.Context, version *string) (map[string]any, error) {
+	return c.Core.GetProtocolConfig(ctx, version)
+}
+func (c *Client) GetValidatorsApy(ctx context.Context) (map[string]any, error) {
+	return c.Core.GetValidatorsApy(ctx)
+}
+func (c *Client) GetStakes(ctx context.Context, owner string) ([]map[string]any, error) {
+	return c.Core.GetStakes(ctx, owner)
+}
+func (c *Client) GetStakesByIDs(ctx context.Context, ids []string) ([]map[string]any, error) {
+	return c.Core.GetStakesByIDs(ctx, ids)
+}
+func (c *Client) ResolveNameServiceAddress(ctx context.Context, name string) (string, error) {
+	return c.Core.ResolveNameServiceAddress(ctx, name)
+}
+func (c *Client) GetLatestCheckpointSequenceNumber(ctx context.Context) (string, error) {
+	return c.Core.GetLatestCheckpointSequenceNumber(ctx)
+}
+func (c *Client) GetCheckpoint(ctx context.Context, checkpointID string) (map[string]any, error) {
+	return c.Core.GetCheckpoint(ctx, checkpointID)
+}
+func (c *Client) GetCheckpoints(ctx context.Context, cursor any, limit *int, descendingOrder bool) (map[string]any, error) {
+	return c.Core.GetCheckpoints(ctx, cursor, limit, descendingOrder)
 }

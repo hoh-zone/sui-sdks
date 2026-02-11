@@ -119,3 +119,88 @@ func (c *MarginMaintainerContract) SetLiquidationVaultConfig(tx *stx.Transaction
 		tx.Object(vaultID), pureU64(tx, margin), tx.Object(c.maintainerCap()),
 	}, nil)
 }
+
+func (c *MarginMaintainerContract) CreateMarginPool(tx *stx.Transaction, coinKey string, poolConfig stx.Argument) stx.Argument {
+	coin := c.config.GetCoin(coinKey)
+	return tx.MoveCall(c.config.MarginPackageID+"::margin_pool::create_margin_pool", []stx.Argument{
+		tx.Object(c.config.MarginRegistryID), poolConfig, tx.Object(c.maintainerCap()), tx.Object("0x6"),
+	}, []string{coin.Type})
+}
+
+func (c *MarginMaintainerContract) NewMarginPoolConfig(tx *stx.Transaction, coinKey string, params types.MarginPoolConfigParams) stx.Argument {
+	coin := c.config.GetCoin(coinKey)
+	return tx.MoveCall(c.config.MarginPackageID+"::protocol_config::new_margin_pool_config", []stx.Argument{
+		pureU64(tx, uint64(math.Round(params.SupplyCap*coin.Scalar))),
+		pureU64(tx, uint64(math.Round(params.MaxUtilizationRate*utils.FloatScalar))),
+		pureU64(tx, uint64(math.Round(params.ReferralSpread*utils.FloatScalar))),
+		pureU64(tx, uint64(math.Round(params.MinBorrow*coin.Scalar))),
+	}, nil)
+}
+
+func (c *MarginMaintainerContract) NewMarginPoolConfigWithRateLimit(tx *stx.Transaction, coinKey string, params types.MarginPoolConfigParams) stx.Argument {
+	coin := c.config.GetCoin(coinKey)
+	return tx.MoveCall(c.config.MarginPackageID+"::protocol_config::new_margin_pool_config_with_rate_limit", []stx.Argument{
+		pureU64(tx, uint64(math.Round(params.SupplyCap*coin.Scalar))),
+		pureU64(tx, uint64(math.Round(params.MaxUtilizationRate*utils.FloatScalar))),
+		pureU64(tx, uint64(math.Round(params.ReferralSpread*utils.FloatScalar))),
+		pureU64(tx, uint64(math.Round(params.MinBorrow*coin.Scalar))),
+		pureU64(tx, uint64(math.Round(params.RateLimitCapacity*coin.Scalar))),
+		pureU64(tx, uint64(math.Round(params.RateLimitRefillRatePerMs*coin.Scalar))),
+		pureBool(tx, params.RateLimitEnabled),
+	}, nil)
+}
+
+func (c *MarginMaintainerContract) NewInterestConfig(tx *stx.Transaction, params types.InterestConfigParams) stx.Argument {
+	return tx.MoveCall(c.config.MarginPackageID+"::protocol_config::new_interest_config", []stx.Argument{
+		pureU64(tx, uint64(math.Round(params.BaseRate*utils.FloatScalar))),
+		pureU64(tx, uint64(math.Round(params.BaseSlope*utils.FloatScalar))),
+		pureU64(tx, uint64(math.Round(params.OptimalUtilization*utils.FloatScalar))),
+		pureU64(tx, uint64(math.Round(params.ExcessSlope*utils.FloatScalar))),
+	}, nil)
+}
+
+func (c *MarginMaintainerContract) NewProtocolConfigWithParams(tx *stx.Transaction, coinKey string, marginPoolConfig types.MarginPoolConfigParams, interestConfig types.InterestConfigParams) stx.Argument {
+	marginCfg := c.NewMarginPoolConfig(tx, coinKey, marginPoolConfig)
+	if marginPoolConfig.RateLimitEnabled || marginPoolConfig.RateLimitCapacity > 0 || marginPoolConfig.RateLimitRefillRatePerMs > 0 {
+		marginCfg = c.NewMarginPoolConfigWithRateLimit(tx, coinKey, marginPoolConfig)
+	}
+	interestCfg := c.NewInterestConfig(tx, interestConfig)
+	return tx.MoveCall(c.config.MarginPackageID+"::protocol_config::new_protocol_config", []stx.Argument{
+		marginCfg, interestCfg,
+	}, nil)
+}
+
+func (c *MarginMaintainerContract) UpdateInterestParamsWithCap(tx *stx.Transaction, coinKey, marginPoolCap string, params types.InterestConfigParams) stx.Argument {
+	marginPool := c.config.GetMarginPool(coinKey)
+	interestCfg := c.NewInterestConfig(tx, params)
+	return tx.MoveCall(c.config.MarginPackageID+"::margin_pool::update_interest_params", []stx.Argument{
+		tx.Object(marginPool.Address), tx.Object(c.config.MarginRegistryID), interestCfg, tx.Object(marginPoolCap), tx.Object("0x6"),
+	}, []string{marginPool.Type})
+}
+
+func (c *MarginMaintainerContract) UpdateMarginPoolConfig(tx *stx.Transaction, coinKey, marginPoolCap string, params types.MarginPoolConfigParams) stx.Argument {
+	marginPool := c.config.GetMarginPool(coinKey)
+	marginCfg := c.NewMarginPoolConfig(tx, coinKey, params)
+	if params.RateLimitEnabled || params.RateLimitCapacity > 0 || params.RateLimitRefillRatePerMs > 0 {
+		marginCfg = c.NewMarginPoolConfigWithRateLimit(tx, coinKey, params)
+	}
+	return tx.MoveCall(c.config.MarginPackageID+"::margin_pool::update_margin_pool_config", []stx.Argument{
+		tx.Object(marginPool.Address), tx.Object(c.config.MarginRegistryID), marginCfg, tx.Object(marginPoolCap), tx.Object("0x6"),
+	}, []string{marginPool.Type})
+}
+
+func (c *MarginMaintainerContract) EnableDeepbookPoolForLoanWithCap(tx *stx.Transaction, deepbookPoolKey, coinKey, marginPoolCap string) stx.Argument {
+	deepbookPool := c.config.GetPool(deepbookPoolKey)
+	marginPool := c.config.GetMarginPool(coinKey)
+	return tx.MoveCall(c.config.MarginPackageID+"::margin_pool::enable_deepbook_pool_for_loan", []stx.Argument{
+		tx.Object(marginPool.Address), tx.Object(c.config.MarginRegistryID), pureAddress(tx, deepbookPool.Address), tx.Object(marginPoolCap), tx.Object("0x6"),
+	}, []string{marginPool.Type})
+}
+
+func (c *MarginMaintainerContract) DisableDeepbookPoolForLoanWithCap(tx *stx.Transaction, deepbookPoolKey, coinKey, marginPoolCap string) stx.Argument {
+	deepbookPool := c.config.GetPool(deepbookPoolKey)
+	marginPool := c.config.GetMarginPool(coinKey)
+	return tx.MoveCall(c.config.MarginPackageID+"::margin_pool::disable_deepbook_pool_for_loan", []stx.Argument{
+		tx.Object(marginPool.Address), tx.Object(c.config.MarginRegistryID), pureAddress(tx, deepbookPool.Address), tx.Object(marginPoolCap), tx.Object("0x6"),
+	}, []string{marginPool.Type})
+}

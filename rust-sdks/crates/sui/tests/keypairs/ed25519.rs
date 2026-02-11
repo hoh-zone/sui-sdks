@@ -1,4 +1,4 @@
-use sui::sui::keypairs::ed25519::Keypair;
+use sui::keypairs::ed25519::Keypair;
 
 #[test]
 fn ed25519_sign_verify_and_encode_decode() {

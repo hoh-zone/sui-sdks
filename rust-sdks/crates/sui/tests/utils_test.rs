@@ -1,4 +1,4 @@
-use sui::sui::utils;
+use sui::utils;
 
 #[test]
 fn normalize_and_validate_address() {

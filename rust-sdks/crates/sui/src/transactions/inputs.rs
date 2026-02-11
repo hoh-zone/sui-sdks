@@ -19,7 +19,7 @@ fn normalize_sui_address(addr: &str) -> String {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "$kind", rename_all = "camelCase")]
+#[serde(tag = "$kind")]
 pub enum CallArg {
     Pure(Pure),
     Object(ObjectKind),
@@ -32,7 +32,7 @@ pub struct Pure {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "$kind", rename_all = "camelCase")]
+#[serde(tag = "$kind")]
 pub enum ObjectKind {
     ImmOrOwnedObject(ImmOrOwnedObject),
     SharedObject(SharedObject),
@@ -97,7 +97,7 @@ pub struct Reservation {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "$kind", rename_all = "camelCase")]
+#[serde(tag = "$kind")]
 pub enum WithdrawFrom {
     CallArg(Argument),
     #[serde(rename = "$Intent")]
@@ -105,7 +105,7 @@ pub enum WithdrawFrom {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "$kind", rename_all = "camelCase")]
+#[serde(tag = "$kind")]
 pub enum TransactionInput {
     Call(CallArg),
     Pure(PureValue),
@@ -210,7 +210,7 @@ mod tests {
 
     #[test]
     fn test_deserialize_call_arg() {
-        let json = r#"{"$kind":"Pure","Pure":{"bytes":"AQIDBA=="}}"#;
+        let json = r#"{"$kind":"Pure","bytes":"AQIDBA=="}"#;
         let call_arg: CallArg = serde_json::from_str(json).unwrap();
         match call_arg {
             CallArg::Pure(_) => (),

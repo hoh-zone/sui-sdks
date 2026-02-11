@@ -2,6 +2,7 @@ package utils
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"strings"
 )
 
@@ -74,7 +75,7 @@ func deriveDomainID(domain string, config *NameServiceConfig) string {
 		h[i] = (h[i] & 0x3F) | 0x3D
 	}
 
-	return string(h)
+	return "0x" + hex.EncodeToString(h)
 }
 
 func reverseString(s string) string {

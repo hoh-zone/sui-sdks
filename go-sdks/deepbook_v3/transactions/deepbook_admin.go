@@ -98,6 +98,17 @@ func (c *DeepBookAdminContract) AdjustTickSize(tx *stx.Transaction, poolKey stri
 	}, []string{base.Type, quote.Type})
 }
 
+func (c *DeepBookAdminContract) AdjustMinLotSize(tx *stx.Transaction, poolKey string, newLotSize, newMinSize float64) stx.Argument {
+	pool := c.config.GetPool(poolKey)
+	base := c.config.GetCoin(pool.BaseCoin)
+	quote := c.config.GetCoin(pool.QuoteCoin)
+	lot := uint64(math.Round(newLotSize * base.Scalar))
+	minSize := uint64(math.Round(newMinSize * base.Scalar))
+	return tx.MoveCall(c.config.DeepbookPackageID+"::pool::adjust_min_lot_size_admin", []stx.Argument{
+		tx.Object(pool.Address), pureU64(tx, lot), pureU64(tx, minSize), tx.Object(c.adminCap()),
+	}, []string{base.Type, quote.Type})
+}
+
 func (c *DeepBookAdminContract) InitBalanceManagerMap(tx *stx.Transaction) stx.Argument {
 	return tx.MoveCall(c.config.DeepbookPackageID+"::registry::init_balance_manager_map", []stx.Argument{
 		tx.Object(c.config.RegistryID), tx.Object(c.adminCap()),

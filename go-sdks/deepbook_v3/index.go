@@ -1,10 +1,9 @@
 package deepbookv3
 
 import (
+	"github.com/sui-sdks/go-sdks/deepbook_v3/pyth"
 	"github.com/sui-sdks/go-sdks/deepbook_v3/transactions"
-	"github.com/sui-sdks/go-sdks/deepbook_v3/types"
 	"github.com/sui-sdks/go-sdks/deepbook_v3/utils"
-	"github.com/sui-sdks/go-sdks/stx"
 )
 
 type (

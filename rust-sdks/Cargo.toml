@@ -3,4 +3,6 @@ resolver = "2"
 members = [
     "crates/sui",
     "crates/deepbook-v3",
+    "crates/walrus",
+    "crates/seal",
 ]

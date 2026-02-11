@@ -1,4 +1,4 @@
-use sui::sui::keypairs::secp256r1::Keypair;
+use sui::keypairs::secp256r1::Keypair;
 
 #[test]
 fn secp256r1_sign_verify_and_encode_decode() {

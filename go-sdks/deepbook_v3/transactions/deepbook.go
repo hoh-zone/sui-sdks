@@ -189,74 +189,91 @@ func (c *DeepBookContract) GetQuoteQuantityOut(tx *stx.Transaction, poolKey stri
 	q := uint64(math.Round(baseQuantity * base.Scalar))
 	return tx.MoveCall(c.poolTarget("get_quote_quantity_out"), []stx.Argument{
 		tx.Object(pool.Address), pureU64(tx, q), tx.Object("0x6"),
-	})
+	}, []string{base.Type, quote.Type})
 }
 
 func (c *DeepBookContract) CancelAllUserOrders(tx *stx.Transaction, poolKey, balanceManagerKey string) stx.Argument {
+	base, quote, pool := c.poolTypes(poolKey)
 	manager := c.config.GetBalanceManager(balanceManagerKey)
 	tx.SetGasBudgetIfNotSet(utils.GasBudget)
-
-	_, _, _ = tx.MakeMoveVec(tx.Object("0x6"))
-
 	return tx.MoveCall(c.poolTarget("cancel_all_user_orders"), []stx.Argument{
+		tx.Object(pool.Address),
 		tx.Object(manager.Address),
 		tx.Object("0x6"),
-	})
+	}, []string{base.Type, quote.Type})
 }
 
 func (c *DeepBookContract) GetOpenOrders(tx *stx.Transaction, poolKey, balanceManagerKey string) stx.Argument {
+	base, quote, pool := c.poolTypes(poolKey)
 	manager := c.config.GetBalanceManager(balanceManagerKey)
 	tx.SetGasBudgetIfNotSet(utils.GasBudget)
-
-	_, _, _ = tx.MakeMoveVec(tx.Object("0x6"))
-
 	return tx.MoveCall(c.poolTarget("get_open_orders"), []stx.Argument{
+		tx.Object(pool.Address),
 		tx.Object(manager.Address),
-	}, []string{c.config.DeepbookPackageID + "::pool::get_open_orders"})
+	}, []string{base.Type, quote.Type})
 }
 
 func (c *DeepBookContract) GetAccountOpenOrders(tx *stx.Transaction, poolKey, balanceManagerKey string) stx.Argument {
+	base, quote, pool := c.poolTypes(poolKey)
 	manager := c.config.GetBalanceManager(balanceManagerKey)
 	tx.SetGasBudgetIfNotSet(utils.GasBudget)
-
-	_, _, _ = tx.MakeMoveVec(tx.Object("0x6"))
-
 	return tx.MoveCall(c.poolTarget("get_account_open_orders"), []stx.Argument{
+		tx.Object(pool.Address),
 		tx.Object(manager.Address),
-	}, []string{c.config.DeepbookPackageID + "::pool::get_account_open_orders"})
+	}, []string{base.Type, quote.Type})
 }
 
 func (c *DeepBookContract) GetUserOpenOrders(tx *stx.Transaction, poolKey, balanceManagerKey string) stx.Argument {
+	base, quote, pool := c.poolTypes(poolKey)
 	manager := c.config.GetBalanceManager(balanceManagerKey)
 	tx.SetGasBudgetIfNotSet(utils.GasBudget)
-
-	_, _, _ = tx.MakeMoveVec(tx.Object("0x6"))
-
 	return tx.MoveCall(c.poolTarget("get_user_open_orders"), []stx.Argument{
+		tx.Object(pool.Address),
 		tx.Object(manager.Address),
-	}, []string{c.config.DeepbookPackageID + "::pool::get_user_open_orders"})
+	}, []string{base.Type, quote.Type})
 }
 
 func (c *DeepBookContract) GetFilledOrders(tx *stx.Transaction, poolKey, balanceManagerKey string) stx.Argument {
+	base, quote, pool := c.poolTypes(poolKey)
 	manager := c.config.GetBalanceManager(balanceManagerKey)
 	tx.SetGasBudgetIfNotSet(utils.GasBudget)
-
-	_, _, _ = tx.MakeMoveVec(tx.Object("0x6"))
-
 	return tx.MoveCall(c.poolTarget("get_filled_orders"), []stx.Argument{
+		tx.Object(pool.Address),
 		tx.Object(manager.Address),
-	}, []string{c.config.DeepbookPackageID + "::pool::get_filled_orders"})
+	}, []string{base.Type, quote.Type})
 }
 
 func (c *DeepBookContract) GetOrderHistory(tx *stx.Transaction, poolKey, balanceManagerKey string) stx.Argument {
+	base, quote, pool := c.poolTypes(poolKey)
 	manager := c.config.GetBalanceManager(balanceManagerKey)
 	tx.SetGasBudgetIfNotSet(utils.GasBudget)
-
-	_, _, _ = tx.MakeMoveVec(tx.Object("0x6"))
-
 	return tx.MoveCall(c.poolTarget("get_order_history"), []stx.Argument{
+		tx.Object(pool.Address),
 		tx.Object(manager.Address),
-	}, []string{c.config.DeepbookPackageID + "::pool::get_order_history"})
+	}, []string{base.Type, quote.Type})
+}
+
+func (c *DeepBookContract) CreatePermissionlessPool(tx *stx.Transaction, params types.CreatePermissionlessPoolParams) stx.Argument {
+	base := c.config.GetCoin(params.BaseCoinKey)
+	quote := c.config.GetCoin(params.QuoteCoinKey)
+	adjustedTickSize := uint64(math.Round((params.TickSize * utils.FloatScalar * quote.Scalar) / base.Scalar))
+	adjustedLotSize := uint64(math.Round(params.LotSize * base.Scalar))
+	adjustedMinSize := uint64(math.Round(params.MinSize * base.Scalar))
+
+	deepCoin := params.DeepCoin
+	if deepCoin == nil {
+		deepCoin = tx.SplitCoins(tx.Gas(), []stx.Argument{
+			pureU64(tx, uint64(utils.PoolCreationFeeDeep)),
+		})
+	}
+
+	return tx.MoveCall(c.poolTarget("create_permissionless_pool"), []stx.Argument{
+		tx.Object(c.config.RegistryID),
+		pureU64(tx, adjustedTickSize),
+		pureU64(tx, adjustedLotSize),
+		pureU64(tx, adjustedMinSize),
+		deepCoin,
+	}, []string{base.Type, quote.Type})
 }
 
 func (c *DeepBookContract) GetBaseQuantityOut(tx *stx.Transaction, poolKey string, quoteQuantity float64) stx.Argument {
@@ -525,6 +542,13 @@ func (c *DeepBookContract) SwapExactQuantityBoth(tx *stx.Transaction, params typ
 	}, []string{base.Type, quote.Type})
 }
 
+func (c *DeepBookContract) SwapExactQuantity(tx *stx.Transaction, params types.SwapParams, isBaseToCoin bool) stx.Argument {
+	if isBaseToCoin {
+		return c.SwapExactQuantityBaseToQuote(tx, params)
+	}
+	return c.SwapExactQuantityQuoteToBase(tx, params)
+}
+
 func (c *DeepBookContract) SwapExactBaseForQuoteWithManager(tx *stx.Transaction, params types.SwapWithManagerParams) stx.Argument {
 	base, quote, pool := c.poolTypes(params.PoolKey)
 	amount := uint64(math.Round(params.Amount * base.Scalar))
@@ -585,6 +609,13 @@ func (c *DeepBookContract) SwapExactQuantityWithManagerQuoteToBase(tx *stx.Trans
 		pureU64(tx, amount),
 		pureU64(tx, minOut),
 	}, []string{base.Type, quote.Type})
+}
+
+func (c *DeepBookContract) SwapExactQuantityWithManager(tx *stx.Transaction, params types.SwapWithManagerParams, isBaseToCoin bool) stx.Argument {
+	if isBaseToCoin {
+		return c.SwapExactQuantityWithManagerBaseToQuote(tx, params)
+	}
+	return c.SwapExactQuantityWithManagerQuoteToBase(tx, params)
 }
 
 func (c *DeepBookContract) SwapWithManagerBaseForQuote(tx *stx.Transaction, params types.SwapWithManagerParams) stx.Argument {
@@ -652,6 +683,13 @@ func (c *DeepBookContract) WithdrawSettledAmountsPermissionless(tx *stx.Transact
 	manager := c.config.GetBalanceManager(balanceManagerKey)
 	return tx.MoveCall(c.poolTarget("withdraw_settled_amounts_permissionless"), []stx.Argument{
 		tx.Object(pool.Address), tx.Object(manager.Address), tx.Object(withdrawCap),
+	}, []string{base.Type, quote.Type})
+}
+
+func (c *DeepBookContract) WithdrawSettledAmountsManagerID(tx *stx.Transaction, poolKey, balanceManagerID string) stx.Argument {
+	base, quote, pool := c.poolTypes(poolKey)
+	return tx.MoveCall(c.poolTarget("withdraw_settled_amounts_permissionless"), []stx.Argument{
+		tx.Object(pool.Address), tx.Object(balanceManagerID),
 	}, []string{base.Type, quote.Type})
 }
 

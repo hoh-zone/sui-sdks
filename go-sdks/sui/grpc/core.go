@@ -114,7 +114,7 @@ func (c *CoreClient) GetDynamicFieldObject(ctx context.Context, parentObjectID s
 
 func (c *CoreClient) VerifyZkLoginSignature(ctx context.Context, signature string, bytes string, intentScope string, author string) (map[string]any, error) {
 	var out map[string]any
-	err := c.Call(ctx, "sui_verifyZkLoginSignature", []any{signature, bytes, intentScope, author}, &out)
+	err := c.Call(ctx, "sui_verifyZkLoginSignature", []any{bytes, signature, intentScope, author}, &out)
 	return out, err
 }
 
@@ -141,6 +141,66 @@ func (c *CoreClient) DefaultNameServiceName(ctx context.Context, address string)
 
 func (c *CoreClient) ResolveTransactionPlugin() any {
 	return nil
+}
+
+func (c *CoreClient) QueryEvents(ctx context.Context, query map[string]any, cursor any, limit *int, descendingOrder bool) (map[string]any, error) {
+	var out map[string]any
+	err := c.Call(ctx, "suix_queryEvents", []any{query, cursor, intOrNil(limit), descendingOrder}, &out)
+	return out, err
+}
+
+func (c *CoreClient) DryRunTransactionBlock(ctx context.Context, txBytesBase64 string) (map[string]any, error) {
+	var out map[string]any
+	err := c.Call(ctx, "sui_dryRunTransactionBlock", []any{txBytesBase64}, &out)
+	return out, err
+}
+
+func (c *CoreClient) GetProtocolConfig(ctx context.Context, version *string) (map[string]any, error) {
+	var out map[string]any
+	err := c.Call(ctx, "sui_getProtocolConfig", []any{version}, &out)
+	return out, err
+}
+
+func (c *CoreClient) GetValidatorsApy(ctx context.Context) (map[string]any, error) {
+	var out map[string]any
+	err := c.Call(ctx, "suix_getValidatorsApy", []any{}, &out)
+	return out, err
+}
+
+func (c *CoreClient) GetStakes(ctx context.Context, owner string) ([]map[string]any, error) {
+	var out []map[string]any
+	err := c.Call(ctx, "suix_getStakes", []any{owner}, &out)
+	return out, err
+}
+
+func (c *CoreClient) GetStakesByIDs(ctx context.Context, stakedSuiIDs []string) ([]map[string]any, error) {
+	var out []map[string]any
+	err := c.Call(ctx, "suix_getStakesByIds", []any{stakedSuiIDs}, &out)
+	return out, err
+}
+
+func (c *CoreClient) ResolveNameServiceAddress(ctx context.Context, name string) (string, error) {
+	var out string
+	err := c.Call(ctx, "suix_resolveNameServiceAddress", []any{name}, &out)
+	return out, err
+}
+
+func (c *CoreClient) GetLatestCheckpointSequenceNumber(ctx context.Context) (string, error) {
+	var out string
+	err := c.Call(ctx, "sui_getLatestCheckpointSequenceNumber", []any{}, &out)
+	return out, err
+}
+
+func (c *CoreClient) GetCheckpoint(ctx context.Context, checkpointID string) (map[string]any, error) {
+	var out map[string]any
+	err := c.Call(ctx, "sui_getCheckpoint", []any{checkpointID}, &out)
+	return out, err
+}
+
+func (c *CoreClient) GetCheckpoints(ctx context.Context, cursor any, limit *int, descendingOrder bool) (map[string]any, error) {
+	var out map[string]any
+	err := c.Call(ctx, "sui_getCheckpoints", []any{cursor, intOrNil(limit), descendingOrder}, &out)
+	return out, err
 }
 
 func intOrNil(v *int) any {

@@ -2,6 +2,7 @@ package transactions
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 )
@@ -32,7 +33,7 @@ func CoreClientResolveTransaction(transactionData *TransactionData, options Buil
 func normalizeInputs(transactionData *TransactionData) error {
 	for i, input := range transactionData.Inputs {
 		if input["$kind"] == "UnresolvedPure" {
-			transactionData.Inputs[i] = Inputs.Pure([]byte(toString(input["UnresolvedPure"])))
+			transactionData.Inputs[i] = Inputs.Pure(encodeUnresolvedPure(input["UnresolvedPure"]))
 		}
 	}
 	return nil
@@ -48,19 +49,12 @@ func resolveObjectReferences(transactionData *TransactionData, client CoreClient
 		if objectID == "" {
 			return fmt.Errorf("invalid unresolved object at input %d", i)
 		}
-		transactionData.Inputs[i] = map[string]any{
-			"$kind": "Object",
-			"Object": map[string]any{
-				"$kind": "ImmOrOwnedObject",
-				"ImmOrOwnedObject": map[string]any{
-					"objectId": objectID,
-					"version":  payload["version"],
-					"digest":   payload["digest"],
-				},
-			},
+		resolved, err := resolveObjectInput(context.Background(), client, objectID, payload)
+		if err != nil {
+			return err
 		}
+		transactionData.Inputs[i] = resolved
 	}
-	_ = client
 	return nil
 }
 
@@ -89,6 +83,95 @@ func setGasData(transactionData *TransactionData, client CoreClient) error {
 				"nonce":    0,
 			},
 		}
+	}
+	return nil
+}
+
+func encodeUnresolvedPure(v any) []byte {
+	switch t := v.(type) {
+	case []byte:
+		return append([]byte(nil), t...)
+	case string:
+		return []byte(t)
+	case map[string]any:
+		if inner, ok := t["value"]; ok {
+			return encodeUnresolvedPure(inner)
+		}
+	}
+	if b, err := json.Marshal(v); err == nil {
+		return b
+	}
+	return []byte(toString(v))
+}
+
+func resolveObjectInput(ctx context.Context, client CoreClient, objectID string, fallback map[string]any) (CallArg, error) {
+	version := fallback["version"]
+	digest := fallback["digest"]
+	if version != nil && digest != nil {
+		return makeImmOrOwnedInput(objectID, version, digest), nil
+	}
+
+	var obj map[string]any
+	if err := client.Call(ctx, "sui_getObject", []any{objectID, map[string]any{"showOwner": true}}, &obj); err != nil {
+		// fallback to unresolved payload-derived default if network fetch fails
+		return makeImmOrOwnedInput(objectID, nonNil(version, "0"), nonNil(digest, "")), nil
+	}
+
+	data := pickMap(obj, "data")
+	if data == nil {
+		data = obj
+	}
+	version = nonNil(data["version"], nonNil(version, "0"))
+	digest = nonNil(data["digest"], nonNil(digest, ""))
+	owner := pickMap(data, "owner")
+	if owner != nil {
+		if shared := pickMap(owner, "Shared"); shared != nil {
+			initial := nonNil(shared["initial_shared_version"], shared["initialSharedVersion"])
+			if initial != nil {
+				return CallArg{
+					"$kind": "Object",
+					"Object": map[string]any{
+						"$kind": "SharedObject",
+						"SharedObject": map[string]any{
+							"objectId":             objectID,
+							"mutable":              true,
+							"initialSharedVersion": initial,
+						},
+					},
+				}, nil
+			}
+		}
+	}
+	return makeImmOrOwnedInput(objectID, version, digest), nil
+}
+
+func makeImmOrOwnedInput(objectID string, version any, digest any) CallArg {
+	return CallArg{
+		"$kind": "Object",
+		"Object": map[string]any{
+			"$kind": "ImmOrOwnedObject",
+			"ImmOrOwnedObject": map[string]any{
+				"objectId": objectID,
+				"version":  nonNil(version, "0"),
+				"digest":   nonNil(digest, ""),
+			},
+		},
+	}
+}
+
+func nonNil(v any, defaultValue any) any {
+	if v == nil {
+		return defaultValue
+	}
+	return v
+}
+
+func pickMap(m map[string]any, key string) map[string]any {
+	if m == nil {
+		return nil
+	}
+	if val, ok := m[key].(map[string]any); ok {
+		return val
 	}
 	return nil
 }

@@ -192,6 +192,24 @@ func TestMarginContractsTargets(t *testing.T) {
 	if got := firstFunction(tx7); got != "conditional_order" {
 		t.Fatalf("expected conditional_order, got %s", got)
 	}
+
+	tx8 := stx.NewTransaction()
+	mm.BalanceManager(tx8, "DEEP_SUI", "0x3")
+	if got := firstFunction(tx8); got != "balance_manager" {
+		t.Fatalf("expected balance_manager, got %s", got)
+	}
+
+	tx9 := stx.NewTransaction()
+	mm.Owner(tx9, "DEEP_SUI", "0x3")
+	if got := firstFunction(tx9); got != "owner" {
+		t.Fatalf("expected owner, got %s", got)
+	}
+
+	tx10 := stx.NewTransaction()
+	mm.ManagerStateByID(tx10, "DEEP_SUI", "0x3")
+	if got := firstFunction(tx10); got != "manager_state" {
+		t.Fatalf("expected manager_state, got %s", got)
+	}
 }
 
 func TestSwapMethods(t *testing.T) {
@@ -224,13 +242,26 @@ func TestSwapMethods(t *testing.T) {
 				PoolKey: "DEEP_SUI", Amount: 100, MinOut: 95,
 			})
 		}, "swap_exact_quantity"},
+		{"SwapExactQuantity", func(tx *stx.Transaction) {
+			db.SwapExactQuantity(tx, types.SwapParams{
+				PoolKey: "DEEP_SUI", Amount: 100, MinOut: 95,
+			}, true)
+		}, "swap_exact_quantity"},
 		{"SwapExactQuantityBoth", func(tx *stx.Transaction) {
 			db.SwapExactQuantityBoth(tx, types.SwapParams{
 				PoolKey: "DEEP_SUI", Amount: 100, MinOut: 95,
 			}, 50, 50)
 		}, "swap_exact_quantity"},
+		{"SwapExactQuantityWithManager", func(tx *stx.Transaction) {
+			db.SwapExactQuantityWithManager(tx, types.SwapWithManagerParams{
+				PoolKey: "DEEP_SUI", Amount: 100, MinOut: 95,
+			}, false)
+		}, "swap_exact_quantity"},
 		{"WithdrawSettledAmountsPermissionless", func(tx *stx.Transaction) {
 			db.WithdrawSettledAmountsPermissionless(tx, "DEEP_SUI", "m1", "0x999")
+		}, "withdraw_settled_amounts_permissionless"},
+		{"WithdrawSettledAmountsManagerID", func(tx *stx.Transaction) {
+			db.WithdrawSettledAmountsManagerID(tx, "DEEP_SUI", "0x123")
 		}, "withdraw_settled_amounts_permissionless"},
 		{"UpdatePoolReferralMultiplier", func(tx *stx.Transaction) {
 			db.UpdatePoolReferralMultiplier(tx, "DEEP_SUI", "0x123", 0.5)

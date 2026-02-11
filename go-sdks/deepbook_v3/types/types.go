@@ -252,3 +252,9 @@ type Config struct {
 	MarginRegistryID     string
 	LiquidationPackageID string
 }
+
+type CoinTypeSetup struct {
+	CoinKey              string
+	MaxConfBps           uint64
+	MaxEwmaDifferenceBps uint64
+}

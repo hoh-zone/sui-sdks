@@ -1,7 +1,7 @@
 use httpmock::Method::POST;
 use httpmock::MockServer;
 use serde_json::json;
-use sui::sui::jsonrpc::{default_jsonrpc_fullnode_url, Client, JsonRpcError};
+use sui::jsonrpc::{default_jsonrpc_fullnode_url, Client, JsonRpcError};
 
 #[tokio::test]
 async fn jsonrpc_call_and_get_balance() {

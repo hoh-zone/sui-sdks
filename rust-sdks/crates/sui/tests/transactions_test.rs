@@ -1,8 +1,8 @@
 use httpmock::Method::POST;
 use httpmock::MockServer;
 use serde_json::json;
-use sui::sui::jsonrpc::Client as JsonRpcClient;
-use sui::sui::keypairs::ed25519::Keypair;
+use sui::jsonrpc::Client as JsonRpcClient;
+use sui::keypairs::ed25519::Keypair;
 use sui::transactions::Transaction;
 
 #[test]

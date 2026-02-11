@@ -4,7 +4,7 @@ use super::arguments::Argument;
 use super::normalize_sui_address;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "$kind", rename_all = "camelCase")]
+#[serde(tag = "$kind")]
 pub enum CommandKind {
     MoveCall(MoveCall),
     TransferObjects(TransferObjects),
@@ -211,7 +211,7 @@ mod tests {
 
     #[test]
     fn test_transfer_objects_command() {
-        let address = Argument::Input(0);
+        let address = Argument::input(0);
         let cmd = TransactionCommands::transfer_objects(vec![], address.clone());
         match cmd.kind {
             CommandKind::TransferObjects(_) => (),
@@ -221,8 +221,8 @@ mod tests {
 
     #[test]
     fn test_split_coins_command() {
-        let coin = Argument::Input(0);
-        let amounts = vec![Argument::Pure(vec![1, 2, 3, 4, 5, 6, 7, 8])];
+        let coin = Argument::input(0);
+        let amounts = vec![Argument::pure(vec![1, 2, 3, 4, 5, 6, 7, 8])];
         let cmd = TransactionCommands::split_coins(coin.clone(), amounts);
         match cmd.kind {
             CommandKind::SplitCoins(_) => (),

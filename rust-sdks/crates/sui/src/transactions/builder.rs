@@ -1,8 +1,8 @@
 use serde_json::{json, Value};
 
 use crate::crypto;
-use crate::sui::keypairs::{ed25519, secp256k1, secp256r1};
-use crate::sui::jsonrpc;
+use crate::keypairs::{ed25519, secp256k1, secp256r1};
+use crate::jsonrpc;
 use super::types::{SignedTransaction, Transaction, TransactionError};
 
 impl Transaction {

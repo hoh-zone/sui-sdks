@@ -40,4 +40,17 @@ func TestClientGetBalanceAndCall(t *testing.T) {
 	if bal["totalBalance"].(string) != "123" {
 		t.Fatalf("unexpected balance")
 	}
+
+	if _, err := c.QueryEvents(context.Background(), map[string]any{}, nil, nil, true); err != nil {
+		t.Fatalf("query events failed: %v", err)
+	}
+	if _, err := c.DryRunTransactionBlock(context.Background(), "AA=="); err != nil {
+		t.Fatalf("dry run failed: %v", err)
+	}
+	if _, err := c.GetProtocolConfig(context.Background(), nil); err != nil {
+		t.Fatalf("get protocol config failed: %v", err)
+	}
+	if _, err := c.GetCheckpoint(context.Background(), "1"); err != nil {
+		t.Fatalf("get checkpoint failed: %v", err)
+	}
 }

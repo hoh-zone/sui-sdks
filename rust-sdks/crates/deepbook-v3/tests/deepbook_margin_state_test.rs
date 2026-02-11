@@ -6,7 +6,7 @@ use serde_json::json;
 use deepbook_v3::client::DeepBookClient;
 use deepbook_v3::config::DeepBookConfig;
 use deepbook_v3::types::MarginManager;
-use sui::sui::jsonrpc;
+use sui::jsonrpc;
 
 fn b64_u64(v: u64) -> String {
     base64::engine::general_purpose::STANDARD.encode(v.to_le_bytes())

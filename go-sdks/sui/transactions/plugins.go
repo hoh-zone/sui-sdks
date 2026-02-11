@@ -1,5 +1,10 @@
 package transactions
 
+import (
+	"fmt"
+	"strings"
+)
+
 type TransactionKind string
 
 const (
@@ -29,14 +34,24 @@ func (p *NamedPackagesPlugin) Name() string {
 }
 
 func (p *NamedPackagesPlugin) BeforeTransaction(tx *Transaction, kind TransactionKind) error {
+	_ = kind
+	replaceNamedPackagesInAny(tx.data.Commands, p.packages)
+	replaceNamedPackagesInAny(tx.data.Inputs, p.packages)
 	return nil
 }
 
 func (p *NamedPackagesPlugin) AfterTransaction(tx *Transaction, result any, err error) error {
+	_ = result
+	_ = err
+	if unresolved := findFirstNamedPackage(tx.data.Commands); unresolved != "" {
+		return fmt.Errorf("unresolved named package: %s", unresolved)
+	}
 	return nil
 }
 
 func (p *NamedPackagesPlugin) Build(tx *Transaction) error {
+	replaceNamedPackagesInAny(tx.data.Commands, p.packages)
+	replaceNamedPackagesInAny(tx.data.Inputs, p.packages)
 	return nil
 }
 
@@ -131,4 +146,95 @@ func (p *ValidatorPlugin) AfterTransaction(tx *Transaction, result any, err erro
 
 func (p *ValidatorPlugin) Build(tx *Transaction) error {
 	return nil
+}
+
+func replaceNamedPackagesInAny(v any, packages map[string]string) {
+	switch x := v.(type) {
+	case map[string]any:
+		for k, val := range x {
+			if s, ok := val.(string); ok {
+				x[k] = replaceNamedPackageString(s, packages)
+			} else {
+				replaceNamedPackagesInAny(val, packages)
+			}
+		}
+	case []any:
+		for i := range x {
+			if s, ok := x[i].(string); ok {
+				x[i] = replaceNamedPackageString(s, packages)
+			} else {
+				replaceNamedPackagesInAny(x[i], packages)
+			}
+		}
+	case []Command:
+		for i := range x {
+			replaceNamedPackagesInAny(map[string]any(x[i]), packages)
+		}
+	case []CallArg:
+		for i := range x {
+			replaceNamedPackagesInAny(map[string]any(x[i]), packages)
+		}
+	case []Argument:
+		for i := range x {
+			replaceNamedPackagesInAny(map[string]any(x[i]), packages)
+		}
+	case []string:
+		for i := range x {
+			x[i] = replaceNamedPackageString(x[i], packages)
+		}
+	}
+}
+
+func replaceNamedPackageString(value string, packages map[string]string) string {
+	out := value
+	for name, address := range packages {
+		if out == name {
+			out = address
+			continue
+		}
+		out = strings.ReplaceAll(out, name+"::", address+"::")
+		out = strings.ReplaceAll(out, "<"+name+"::", "<"+address+"::")
+		out = strings.ReplaceAll(out, ","+name+"::", ","+address+"::")
+	}
+	return out
+}
+
+func findFirstNamedPackage(v any) string {
+	switch x := v.(type) {
+	case map[string]any:
+		for _, val := range x {
+			if unresolved := findFirstNamedPackage(val); unresolved != "" {
+				return unresolved
+			}
+		}
+	case []any:
+		for _, val := range x {
+			if unresolved := findFirstNamedPackage(val); unresolved != "" {
+				return unresolved
+			}
+		}
+	case []Command:
+		for _, val := range x {
+			if unresolved := findFirstNamedPackage(map[string]any(val)); unresolved != "" {
+				return unresolved
+			}
+		}
+	case []CallArg:
+		for _, val := range x {
+			if unresolved := findFirstNamedPackage(map[string]any(val)); unresolved != "" {
+				return unresolved
+			}
+		}
+	case []Argument:
+		for _, val := range x {
+			if unresolved := findFirstNamedPackage(map[string]any(val)); unresolved != "" {
+				return unresolved
+			}
+		}
+	case string:
+		if strings.Contains(x, "/") && strings.Contains(x, "::") {
+			return strings.SplitN(x, "::", 2)[0]
+		}
+	}
+	return ""
 }

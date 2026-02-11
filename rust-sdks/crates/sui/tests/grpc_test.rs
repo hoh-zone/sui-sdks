@@ -1,4 +1,4 @@
-use sui::sui::grpc::default_grpc_fullnode_url;
+use sui::grpc::default_grpc_fullnode_url;
 
 #[test]
 fn default_grpc_urls() {

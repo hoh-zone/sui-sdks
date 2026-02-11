@@ -1,6 +1,6 @@
 use sui::crypto::SignatureScheme;
-use sui::sui::keypairs::{ed25519, secp256k1, secp256r1};
-use sui::sui::verify;
+use sui::keypairs::{ed25519, secp256k1, secp256r1};
+use sui::verify;
 
 #[test]
 fn verify_ed25519_signature() {

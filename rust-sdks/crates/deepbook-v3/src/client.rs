@@ -8,8 +8,8 @@ use crate::contracts::{
     MarginPoolContract, MarginRegistryContract, MarginTPSLContract,
 };
 use crate::encode::encode_vec_u128;
-use sui::sui::jsonrpc;
-use sui::sui::utils::normalize_sui_address;
+use sui::jsonrpc;
+use sui::utils::normalize_sui_address;
 use sui::transactions::Transaction;
 
 #[derive(Debug, thiserror::Error)]

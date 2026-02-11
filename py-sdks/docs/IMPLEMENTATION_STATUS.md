@@ -31,6 +31,16 @@ Implemented:
     - `MarginTPSLContract`
   - baseline `DeepBookClient` dry-run parser
   - encoding helpers (`u64/u128/bool/vector<u128>`)
+- Walrus baseline:
+  - package config defaults (mainnet/testnet)
+  - storage node client and error mapping
+  - high-level walrus client (`compute_blob_metadata`, `read_blob`, `get_blob`)
+  - file/blob wrappers (`WalrusFile`, `WalrusBlob`)
+- Seal baseline:
+  - session key lifecycle (`SessionKey`)
+  - threshold encryption/decryption (`SealClient.encrypt`/`decrypt`)
+  - key-server retrieval/fetch pipeline scaffold
+  - DEM support (`AesGcm256`, `Hmac256Ctr`)
 
 ## Tests
 
@@ -46,6 +56,9 @@ Implemented:
 - `tests/deepbook_v3/test_encode.py`
 - `tests/deepbook_v3/test_contracts.py`
 - `tests/deepbook_v3/test_client.py`
+- `tests/walrus/test_walrus.py`
+- `tests/seal/test_dem.py`
+- `tests/seal/test_seal_client.py`
 
 Run:
 
@@ -57,8 +70,6 @@ PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_*.py' -v
 
 - Real cryptographic backends for keypairs/signature verification.
 - grpc-native protobuf stubs and typed request/response parity (native transport scaffold exists).
-- Walrus package parity.
-- Seal package parity.
 - Deepbook v3 full contract method coverage and complete result structure parsers.
 
 ## Rust vector format compatibility

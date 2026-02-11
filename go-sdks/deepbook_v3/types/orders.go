@@ -14,12 +14,12 @@ const (
 	OrderSideAsk OrderSide = 1
 )
 
-type OrderType uint8
+type QueryOrderType uint8
 
 const (
-	OrderTypeLimit  OrderType = 0
-	OrderTypeMarket OrderType = 1
-	OrderTypeBid    OrderType = 2
+	QueryOrderTypeLimit  QueryOrderType = 0
+	QueryOrderTypeMarket QueryOrderType = 1
+	QueryOrderTypeBid    QueryOrderType = 2
 )
 
 type OrderStatus uint8
@@ -38,7 +38,7 @@ type Order struct {
 	PoolKey       string
 	BaseCoin      string
 	QuoteCoin     string
-	OrderType     OrderType
+	OrderType     QueryOrderType
 	OrderSide     OrderSide
 	BaseQuantity  uint64
 	QuoteQuantity uint64
@@ -64,7 +64,7 @@ type BatchOrderCancellation struct {
 type OrderQueryOptions struct {
 	Trader      string
 	PoolKey     string
-	OrderType   OrderType
+	OrderType   QueryOrderType
 	OrderSide   OrderSide
 	OrderStatus []OrderStatus
 	StartTime   *uint64

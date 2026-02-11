@@ -1,7 +1,7 @@
 use base64::Engine as _;
 use sui::crypto::SignatureScheme;
-use sui::sui::keypairs::ed25519;
-use sui::sui::multisig::{
+use sui::keypairs::ed25519;
+use sui::multisig::{
     parse_multisig, serialize_multisig, MultiSigEntry, MultiSigPublicKey, MultiSigSerialized,
     WeightedPublicKey,
 };

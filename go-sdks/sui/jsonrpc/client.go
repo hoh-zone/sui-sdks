@@ -158,6 +158,211 @@ func (c *Client) QueryTransactionBlocks(ctx context.Context, query map[string]an
 	return out, err
 }
 
+func (c *Client) QueryEvents(ctx context.Context, query map[string]any, cursor any, limit *int, descendingOrder bool) (map[string]any, error) {
+	var out map[string]any
+	err := c.Call(ctx, "suix_queryEvents", []any{query, cursor, intOrNil(limit), descendingOrder}, &out)
+	return out, err
+}
+
+func (c *Client) DryRunTransactionBlock(ctx context.Context, txBytesBase64 string) (map[string]any, error) {
+	var out map[string]any
+	err := c.Call(ctx, "sui_dryRunTransactionBlock", []any{txBytesBase64}, &out)
+	return out, err
+}
+
+func (c *Client) DevInspectTransactionBlock(ctx context.Context, sender string, txBytesBase64 string, gasPrice *string, epoch *string) (map[string]any, error) {
+	if !isValidSuiAddress(sender) {
+		return nil, fmt.Errorf("invalid Sui address")
+	}
+	var out map[string]any
+	err := c.Call(ctx, "sui_devInspectTransactionBlock", []any{sender, txBytesBase64, gasPrice, epoch}, &out)
+	return out, err
+}
+
+func (c *Client) MultiGetTransactionBlocks(ctx context.Context, digests []string, options map[string]any) ([]map[string]any, error) {
+	for _, d := range digests {
+		if !isValidTransactionDigest(d) {
+			return nil, fmt.Errorf("invalid transaction digest: %s", d)
+		}
+	}
+	var out []map[string]any
+	err := c.Call(ctx, "sui_multiGetTransactionBlocks", []any{digests, options}, &out)
+	return out, err
+}
+
+func (c *Client) GetTotalTransactionBlocks(ctx context.Context) (string, error) {
+	var out string
+	err := c.Call(ctx, "sui_getTotalTransactionBlocks", []any{}, &out)
+	return out, err
+}
+
+func (c *Client) TryGetPastObject(ctx context.Context, objectID string, version string, options map[string]any) (map[string]any, error) {
+	if !isValidSuiObjectID(objectID) {
+		return nil, fmt.Errorf("invalid Sui object id")
+	}
+	var out map[string]any
+	err := c.Call(ctx, "sui_tryGetPastObject", []any{objectID, version, options}, &out)
+	return out, err
+}
+
+func (c *Client) GetLatestCheckpointSequenceNumber(ctx context.Context) (string, error) {
+	var out string
+	err := c.Call(ctx, "sui_getLatestCheckpointSequenceNumber", []any{}, &out)
+	return out, err
+}
+
+func (c *Client) GetCheckpoint(ctx context.Context, checkpointID string) (map[string]any, error) {
+	var out map[string]any
+	err := c.Call(ctx, "sui_getCheckpoint", []any{checkpointID}, &out)
+	return out, err
+}
+
+func (c *Client) GetCheckpoints(ctx context.Context, cursor any, limit *int, descendingOrder bool) (map[string]any, error) {
+	var out map[string]any
+	err := c.Call(ctx, "sui_getCheckpoints", []any{cursor, intOrNil(limit), descendingOrder}, &out)
+	return out, err
+}
+
+func (c *Client) GetCommitteeInfo(ctx context.Context, epoch *string) (map[string]any, error) {
+	var out map[string]any
+	err := c.Call(ctx, "suix_getCommitteeInfo", []any{epoch}, &out)
+	return out, err
+}
+
+func (c *Client) GetNetworkMetrics(ctx context.Context) (map[string]any, error) {
+	var out map[string]any
+	err := c.Call(ctx, "suix_getNetworkMetrics", []any{}, &out)
+	return out, err
+}
+
+func (c *Client) GetLatestAddressMetrics(ctx context.Context) (map[string]any, error) {
+	var out map[string]any
+	err := c.Call(ctx, "suix_getLatestAddressMetrics", []any{}, &out)
+	return out, err
+}
+
+func (c *Client) GetEpochMetrics(ctx context.Context, cursor any, limit *int, descendingOrder bool) (map[string]any, error) {
+	var out map[string]any
+	err := c.Call(ctx, "suix_getEpochMetrics", []any{cursor, intOrNil(limit), descendingOrder}, &out)
+	return out, err
+}
+
+func (c *Client) GetAllEpochAddressMetrics(ctx context.Context, descendingOrder bool) ([]map[string]any, error) {
+	var out []map[string]any
+	err := c.Call(ctx, "suix_getAllEpochAddressMetrics", []any{descendingOrder}, &out)
+	return out, err
+}
+
+func (c *Client) GetEpochs(ctx context.Context, cursor any, limit *int, descendingOrder bool) (map[string]any, error) {
+	var out map[string]any
+	err := c.Call(ctx, "suix_getEpochs", []any{cursor, intOrNil(limit), descendingOrder}, &out)
+	return out, err
+}
+
+func (c *Client) GetMoveCallMetrics(ctx context.Context) (map[string]any, error) {
+	var out map[string]any
+	err := c.Call(ctx, "suix_getMoveCallMetrics", []any{}, &out)
+	return out, err
+}
+
+func (c *Client) GetCurrentEpoch(ctx context.Context) (map[string]any, error) {
+	var out map[string]any
+	err := c.Call(ctx, "suix_getCurrentEpoch", []any{}, &out)
+	return out, err
+}
+
+func (c *Client) GetValidatorsApy(ctx context.Context) (map[string]any, error) {
+	var out map[string]any
+	err := c.Call(ctx, "suix_getValidatorsApy", []any{}, &out)
+	return out, err
+}
+
+func (c *Client) GetStakes(ctx context.Context, owner string) ([]map[string]any, error) {
+	if !isValidSuiAddress(owner) {
+		return nil, fmt.Errorf("invalid Sui address")
+	}
+	var out []map[string]any
+	err := c.Call(ctx, "suix_getStakes", []any{owner}, &out)
+	return out, err
+}
+
+func (c *Client) GetStakesByIds(ctx context.Context, stakedSuiIds []string) ([]map[string]any, error) {
+	for _, id := range stakedSuiIds {
+		if !isValidSuiObjectID(id) {
+			return nil, fmt.Errorf("invalid Sui object id: %s", id)
+		}
+	}
+	var out []map[string]any
+	err := c.Call(ctx, "suix_getStakesByIds", []any{stakedSuiIds}, &out)
+	return out, err
+}
+
+func (c *Client) ResolveNameServiceAddress(ctx context.Context, name string) (string, error) {
+	var out string
+	err := c.Call(ctx, "suix_resolveNameServiceAddress", []any{name}, &out)
+	return out, err
+}
+
+func (c *Client) ResolveNameServiceNames(ctx context.Context, address string, cursor any, limit *int) (map[string]any, error) {
+	if !isValidSuiAddress(address) {
+		return nil, fmt.Errorf("invalid Sui address")
+	}
+	var out map[string]any
+	err := c.Call(ctx, "suix_resolveNameServiceNames", []any{address, cursor, intOrNil(limit)}, &out)
+	return out, err
+}
+
+func (c *Client) GetProtocolConfig(ctx context.Context, version *string) (map[string]any, error) {
+	var out map[string]any
+	err := c.Call(ctx, "sui_getProtocolConfig", []any{version}, &out)
+	return out, err
+}
+
+func (c *Client) GetNormalizedMoveModulesByPackage(ctx context.Context, packageID string) (map[string]any, error) {
+	if !isValidSuiObjectID(packageID) && !isValidNamedPackage(packageID) {
+		return nil, fmt.Errorf("invalid package id")
+	}
+	var out map[string]any
+	err := c.Call(ctx, "sui_getNormalizedMoveModulesByPackage", []any{packageID}, &out)
+	return out, err
+}
+
+func (c *Client) GetNormalizedMoveModule(ctx context.Context, packageID, moduleName string) (map[string]any, error) {
+	if !isValidSuiObjectID(packageID) && !isValidNamedPackage(packageID) {
+		return nil, fmt.Errorf("invalid package id")
+	}
+	var out map[string]any
+	err := c.Call(ctx, "sui_getNormalizedMoveModule", []any{packageID, moduleName}, &out)
+	return out, err
+}
+
+func (c *Client) GetNormalizedMoveFunction(ctx context.Context, packageID, moduleName, functionName string) (map[string]any, error) {
+	if !isValidSuiObjectID(packageID) && !isValidNamedPackage(packageID) {
+		return nil, fmt.Errorf("invalid package id")
+	}
+	var out map[string]any
+	err := c.Call(ctx, "sui_getNormalizedMoveFunction", []any{packageID, moduleName, functionName}, &out)
+	return out, err
+}
+
+func (c *Client) GetMoveFunctionArgTypes(ctx context.Context, packageID, moduleName, functionName string) (map[string]any, error) {
+	if !isValidSuiObjectID(packageID) && !isValidNamedPackage(packageID) {
+		return nil, fmt.Errorf("invalid package id")
+	}
+	var out map[string]any
+	err := c.Call(ctx, "sui_getMoveFunctionArgTypes", []any{packageID, moduleName, functionName}, &out)
+	return out, err
+}
+
+func (c *Client) GetNormalizedMoveStruct(ctx context.Context, packageID, moduleName, structName string) (map[string]any, error) {
+	if !isValidSuiObjectID(packageID) && !isValidNamedPackage(packageID) {
+		return nil, fmt.Errorf("invalid package id")
+	}
+	var out map[string]any
+	err := c.Call(ctx, "sui_getNormalizedMoveStruct", []any{packageID, moduleName, structName}, &out)
+	return out, err
+}
+
 func emptyToNil(v string) any {
 	if strings.TrimSpace(v) == "" {
 		return nil
@@ -199,4 +404,36 @@ func isValidTransactionDigest(digest string) bool {
 	}
 	_, err := bcs.FromBase58(digest)
 	return err == nil
+}
+
+func isValidNamedPackage(name string) bool {
+	parts := strings.Split(name, "/")
+	if len(parts) < 2 || len(parts) > 3 {
+		return false
+	}
+	org, app := parts[0], parts[1]
+	if org == "" || app == "" {
+		return false
+	}
+	for _, c := range org {
+		if !((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) {
+			return false
+		}
+	}
+	for _, c := range app {
+		if !((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-') {
+			return false
+		}
+	}
+	if len(parts) == 3 {
+		if parts[2] == "" {
+			return false
+		}
+		for _, c := range parts[2] {
+			if c < '0' || c > '9' {
+				return false
+			}
+		}
+	}
+	return true
 }

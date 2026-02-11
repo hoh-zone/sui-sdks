@@ -1,5 +1,5 @@
 use serde_json::json;
-use sui::sui::zklogin;
+use sui::zklogin;
 
 #[test]
 fn generate_nonce_and_randomness() {

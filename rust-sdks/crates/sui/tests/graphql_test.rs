@@ -1,7 +1,7 @@
 use httpmock::Method::POST;
 use httpmock::MockServer;
 use serde_json::json;
-use sui::sui::graphql::{Client, GraphqlError, QueryOptions};
+use sui::graphql::{Client, GraphqlError, QueryOptions};
 
 #[tokio::test]
 async fn query_and_execute() {
