@@ -1,18 +1,18 @@
 package deepbookv3
 
 import (
-	"github.com/sui-sdks/go-sdks/deepbook_v3/pyth"
 	"github.com/sui-sdks/go-sdks/deepbook_v3/transactions"
 	"github.com/sui-sdks/go-sdks/deepbook_v3/types"
 	"github.com/sui-sdks/go-sdks/deepbook_v3/utils"
+	"github.com/sui-sdks/go-sdks/stx"
 )
 
-type DeepBookOptions = Options
-type DeepBookClientOptions = ClientOptions
-
-type DeepBookCompatibleClient = CompatibleClient
-
-type DeepBookConfig = utils.DeepBookConfig
+type (
+	DeepBookOptions          = Options
+	DeepBookClientOptions    = ClientOptions
+	DeepBookCompatibleClient = CompatibleClient
+	DeepBookConfig           = utils.DeepBookConfig
+)
 
 var (
 	MainnetCoins       = utils.MainnetCoins
@@ -30,27 +30,20 @@ var (
 	GasBudget          = utils.GasBudget
 	MaxTimestamp       = utils.MaxTimestamp
 
-	NewBalanceManagerContract   = transactions.NewBalanceManagerContract
-	NewDeepBookContract         = transactions.NewDeepBookContract
-	NewDeepBookAdminContract    = transactions.NewDeepBookAdminContract
-	NewFlashLoanContract        = transactions.NewFlashLoanContract
-	NewGovernanceContract       = transactions.NewGovernanceContract
-	NewMarginAdminContract      = transactions.NewMarginAdminContract
-	NewMarginMaintainerContract = transactions.NewMarginMaintainerContract
-	NewMarginManagerContract    = transactions.NewMarginManagerContract
-	NewMarginPoolContract       = transactions.NewMarginPoolContract
-	NewPoolProxyContract        = transactions.NewPoolProxyContract
-	NewMarginTPSLContract       = transactions.NewMarginTPSLContract
-	NewSuiPythClient            = pyth.NewSuiPythClient
-)
-
-type (
-	BalanceManager = types.BalanceManager
-	Coin           = types.Coin
-	Pool           = types.Pool
-	MarginManager  = types.MarginManager
-	MarginPool     = types.MarginPool
-	Config         = types.Config
+	NewBalanceManagerContract     = transactions.NewBalanceManagerContract
+	NewDeepBookContract           = transactions.NewDeepBookContract
+	NewDeepBookAdminContract      = transactions.NewDeepBookAdminContract
+	NewFlashLoanContract          = transactions.NewFlashLoanContract
+	NewGovernanceContract         = transactions.NewGovernanceContract
+	NewMarginAdminContract        = transactions.NewMarginAdminContract
+	NewMarginMaintainerContract   = transactions.NewMarginMaintainerContract
+	NewMarginManagerContract      = transactions.NewMarginManagerContract
+	NewMarginPoolContract         = transactions.NewMarginPoolContract
+	NewMarginRegistryContract     = transactions.NewMarginRegistryContract
+	NewMarginLiquidationsContract = transactions.NewMarginLiquidationsContract
+	NewMarginTPSLContract         = transactions.NewMarginTPSLContract
+	NewPoolProxyContract          = transactions.NewPoolProxyContract
+	NewSuiPythClient              = pyth.NewSuiPythClient
 )
 
 func Deepbook(opts DeepBookClientOptions) *Client {

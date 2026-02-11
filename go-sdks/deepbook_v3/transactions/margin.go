@@ -304,6 +304,60 @@ func (c *MarginManagerContract) DeepBalance(tx *stx.Transaction, poolKey, margin
 	}, []string{base.Type, quote.Type})
 }
 
+func (c *MarginManagerContract) ShareMarginManager(tx *stx.Transaction, poolKey, marginManagerKey string) stx.Argument {
+	manager := c.config.GetMarginManager(marginManagerKey)
+	pool := c.config.GetPool(poolKey)
+	base := c.config.GetCoin(pool.BaseCoin)
+	quote := c.config.GetCoin(pool.QuoteCoin)
+	return tx.MoveCall(c.config.MarginPackageID+"::margin_manager::share_margin_manager", []stx.Argument{
+		tx.Object(manager.Address), tx.Object(c.config.MarginRegistryID),
+	}, []string{base.Type, quote.Type})
+}
+
+func (c *MarginManagerContract) DepositDuringInitialization(tx *stx.Transaction, params types.DepositDuringInitParams) stx.Argument {
+	pool := c.config.GetPool(params.PoolKey)
+	base := c.config.GetCoin(pool.BaseCoin)
+	quote := c.config.GetCoin(pool.QuoteCoin)
+	amount := uint64(math.Round(params.Amount * base.Scalar))
+	if params.CoinType == pool.QuoteCoin {
+		amount = uint64(math.Round(params.Amount * quote.Scalar))
+	}
+	return tx.MoveCall(c.config.MarginPackageID+"::margin_manager::deposit_during_initialization", []stx.Argument{
+		params.Manager, params.Coin, pureU64(tx, amount), tx.Object(c.config.MarginRegistryID),
+	}, []string{base.Type, quote.Type})
+}
+
+func (c *MarginManagerContract) WithdrawDeep(tx *stx.Transaction, marginManagerKey, poolKey string, amount float64) stx.Argument {
+	manager := c.config.GetMarginManager(marginManagerKey)
+	pool := c.config.GetPool(poolKey)
+	base := c.config.GetCoin(pool.BaseCoin)
+	quote := c.config.GetCoin(pool.QuoteCoin)
+	q := uint64(math.Round(amount * utils.DeepScalar))
+	return tx.MoveCall(c.config.MarginPackageID+"::margin_manager::withdraw_deep", []stx.Argument{
+		tx.Object(manager.Address), pureU64(tx, q), tx.Object(c.config.MarginRegistryID),
+	}, []string{base.Type, quote.Type})
+}
+
+func (c *MarginManagerContract) Liquidate(tx *stx.Transaction, liquidatorManagerKey, targetManagerKey, poolKey string, isBase bool) stx.Argument {
+	liquidator := c.config.GetMarginManager(liquidatorManagerKey)
+	target := c.config.GetMarginManager(targetManagerKey)
+	pool := c.config.GetPool(poolKey)
+	base := c.config.GetCoin(pool.BaseCoin)
+	quote := c.config.GetCoin(pool.QuoteCoin)
+	return tx.MoveCall(c.config.MarginPackageID+"::margin_manager::liquidate", []stx.Argument{
+		tx.Object(liquidator.Address), tx.Object(target.Address), tx.Object(pool.Address), tx.Object(c.config.MarginRegistryID), tx.Object("0x6"),
+	}, []string{base.Type, quote.Type})
+}
+
+func (c *MarginManagerContract) HasQuoteDebt(tx *stx.Transaction, poolKey, marginManagerID string) stx.Argument {
+	pool := c.config.GetPool(poolKey)
+	base := c.config.GetCoin(pool.BaseCoin)
+	quote := c.config.GetCoin(pool.QuoteCoin)
+	return tx.MoveCall(c.config.MarginPackageID+"::margin_manager::has_quote_debt", []stx.Argument{
+		tx.Object(marginManagerID),
+	}, []string{base.Type, quote.Type})
+}
+
 func (c *MarginPoolContract) MintSupplierCap(tx *stx.Transaction) stx.Argument {
 	return tx.MoveCall(c.config.MarginPackageID+"::margin_pool::mint_supplier_cap", []stx.Argument{tx.Object(c.config.MarginRegistryID), tx.Object("0x6")}, nil)
 }
@@ -442,6 +496,105 @@ func (c *MarginPoolContract) UserSupplyAmount(tx *stx.Transaction, coinKey, supp
 	}, []string{marginPool.Type})
 }
 
+func (c *MarginPoolContract) SupplyToMarginPool(tx *stx.Transaction, coinKey string, amount float64) stx.Argument {
+	marginPool, ok := c.config.MarginPools[coinKey]
+	coin := c.config.GetCoin(coinKey)
+	object := tx.Object(c.config.MarginRegistryID)
+	if ok {
+		object = tx.Object(marginPool.Address)
+	}
+	return tx.MoveCall(c.config.MarginPackageID+"::margin_pool::supply", []stx.Argument{
+		object, tx.PureBytes([]byte{}), tx.Object("0x6"),
+	}, []string{coin.Type})
+}
+
+func (c *MarginPoolContract) WithdrawFromMarginPool(tx *stx.Transaction, coinKey string, amount float64) stx.Argument {
+	marginPool, ok := c.config.MarginPools[coinKey]
+	coin := c.config.GetCoin(coinKey)
+	q := uint64(math.Round(amount * coin.Scalar))
+	object := tx.Object(c.config.MarginRegistryID)
+	if ok {
+		object = tx.Object(marginPool.Address)
+	}
+	return tx.MoveCall(c.config.MarginPackageID+"::margin_pool::withdraw", []stx.Argument{
+		object, tx.PureBytes([]byte{}), pureU64(tx, q), tx.Object(c.config.MarginRegistryID),
+	}, []string{coin.Type})
+}
+
+func (c *MarginPoolContract) MintSupplyReferral(tx *stx.Transaction, coinKey string) stx.Argument {
+	marginPool, ok := c.config.MarginPools[coinKey]
+	coin := c.config.GetCoin(coinKey)
+	object := tx.Object(c.config.MarginRegistryID)
+	if ok {
+		object = tx.Object(marginPool.Address)
+	}
+	return tx.MoveCall(c.config.MarginPackageID+"::margin_pool::mint_supply_referral", []stx.Argument{
+		object, tx.Object("0x6"),
+	}, []string{coin.Type})
+}
+
+func (c *MarginPoolContract) WithdrawReferralFees(tx *stx.Transaction, coinKey, referralID string) stx.Argument {
+	marginPool, ok := c.config.MarginPools[coinKey]
+	coin := c.config.GetCoin(coinKey)
+	object := tx.Object(c.config.MarginRegistryID)
+	if ok {
+		object = tx.Object(marginPool.Address)
+	}
+	return tx.MoveCall(c.config.MarginPackageID+"::margin_pool::withdraw_referral_fees", []stx.Argument{
+		object, tx.PureBytes([]byte{}), pureAddress(tx, referralID), tx.Object(c.config.MarginRegistryID),
+	}, []string{coin.Type})
+}
+
+func (c *MarginPoolContract) UpdateInterestWeight(tx *stx.Transaction, coinKey string, rate float64) stx.Argument {
+	marginPool, ok := c.config.MarginPools[coinKey]
+	coin := c.config.GetCoin(coinKey)
+	r := uint64(math.Round(rate * utils.FloatScalar))
+	object := tx.Object(c.config.MarginRegistryID)
+	if ok {
+		object = tx.Object(marginPool.Address)
+	}
+	return tx.MoveCall(c.config.MarginPackageID+"::margin_pool::update_interest_weight", []stx.Argument{
+		object, pureU64(tx, r), tx.Object("0x6"),
+	}, []string{coin.Type})
+}
+
+func (c *MarginPoolContract) SetMaxUtilizationRate(tx *stx.Transaction, coinKey string, rate float64) stx.Argument {
+	marginPool, ok := c.config.MarginPools[coinKey]
+	coin := c.config.GetCoin(coinKey)
+	r := uint64(math.Round(rate * utils.FloatScalar))
+	object := tx.Object(c.config.MarginRegistryID)
+	if ok {
+		object = tx.Object(marginPool.Address)
+	}
+	return tx.MoveCall(c.config.MarginPackageID+"::margin_pool::set_max_utilization_rate", []stx.Argument{
+		object, pureU64(tx, r), tx.Object("0x6"),
+	}, []string{coin.Type})
+}
+
+func (c *MarginPoolContract) GetUserSupplyShares(tx *stx.Transaction, coinKey, supplierCapID string) stx.Argument {
+	marginPool, ok := c.config.MarginPools[coinKey]
+	coin := c.config.GetCoin(coinKey)
+	object := tx.Object(c.config.MarginRegistryID)
+	if ok {
+		object = tx.Object(marginPool.Address)
+	}
+	return tx.MoveCall(c.config.MarginPackageID+"::margin_pool::user_supply_shares", []stx.Argument{
+		object, pureAddress(tx, supplierCapID),
+	}, []string{coin.Type})
+}
+
+func (c *MarginPoolContract) GetUserBorrowShares(tx *stx.Transaction, coinKey, collateralID string) stx.Argument {
+	marginPool, ok := c.config.MarginPools[coinKey]
+	coin := c.config.GetCoin(coinKey)
+	object := tx.Object(c.config.MarginRegistryID)
+	if ok {
+		object = tx.Object(marginPool.Address)
+	}
+	return tx.MoveCall(c.config.MarginPackageID+"::margin_pool::user_borrow_shares", []stx.Argument{
+		object, pureAddress(tx, collateralID),
+	}, []string{coin.Type})
+}
+
 func (c *MarginRegistryContract) PoolEnabled(tx *stx.Transaction, poolKey string) stx.Argument {
 	pool := c.config.GetPool(poolKey)
 	base := c.config.GetCoin(pool.BaseCoin)
@@ -543,6 +696,44 @@ func (c *MarginLiquidationsContract) Balance(tx *stx.Transaction, vaultID, coinK
 	return tx.MoveCall(c.config.LiquidationPackageID+"::liquidation_vault::balance", []stx.Argument{
 		tx.Object(vaultID),
 	}, []string{coin.Type})
+}
+
+func (c *MarginLiquidationsContract) Deposit(tx *stx.Transaction, vaultID, coinKey string, amount float64) stx.Argument {
+	coin := c.config.GetCoin(coinKey)
+	q := uint64(math.Round(amount * coin.Scalar))
+	return tx.MoveCall(c.config.LiquidationPackageID+"::liquidation_vault::deposit", []stx.Argument{
+		tx.Object(vaultID), pureU64(tx, q),
+	}, []string{coin.Type})
+}
+
+func (c *MarginLiquidationsContract) Withdraw(tx *stx.Transaction, vaultID, coinKey string, amount float64) stx.Argument {
+	coin := c.config.GetCoin(coinKey)
+	q := uint64(math.Round(amount * coin.Scalar))
+	return tx.MoveCall(c.config.LiquidationPackageID+"::liquidation_vault::withdraw", []stx.Argument{
+		tx.Object(vaultID), pureU64(tx, q),
+	}, []string{coin.Type})
+}
+
+func (c *MarginLiquidationsContract) LiquidateBase(tx *stx.Transaction, vaultID, marginManagerID, poolKey string, amount float64) stx.Argument {
+	marginManager := c.config.GetMarginManager(marginManagerID)
+	pool := c.config.GetPool(poolKey)
+	base := c.config.GetCoin(pool.BaseCoin)
+	quote := c.config.GetCoin(pool.QuoteCoin)
+	q := uint64(math.Round(amount * base.Scalar))
+	return tx.MoveCall(c.config.LiquidationPackageID+"::liquidation_vault::liquidate_base", []stx.Argument{
+		tx.Object(vaultID), pureU64(tx, q), tx.Object(pool.Address), tx.Object(marginManager.Address),
+	}, []string{base.Type, quote.Type})
+}
+
+func (c *MarginLiquidationsContract) LiquidateQuote(tx *stx.Transaction, vaultID, marginManagerID, poolKey string, amount float64) stx.Argument {
+	marginManager := c.config.GetMarginManager(marginManagerID)
+	pool := c.config.GetPool(poolKey)
+	base := c.config.GetCoin(pool.BaseCoin)
+	quote := c.config.GetCoin(pool.QuoteCoin)
+	q := uint64(math.Round(amount * quote.Scalar))
+	return tx.MoveCall(c.config.LiquidationPackageID+"::liquidation_vault::liquidate_quote", []stx.Argument{
+		tx.Object(vaultID), pureU64(tx, q), tx.Object(pool.Address), tx.Object(marginManager.Address),
+	}, []string{base.Type, quote.Type})
 }
 
 func (c *PoolProxyContract) PlaceLimitOrder(tx *stx.Transaction, params types.PlaceMarginLimitOrderParams) stx.Argument {
@@ -813,5 +1004,71 @@ func (c *MarginTPSLContract) HighestTriggerBelowPrice(tx *stx.Transaction, poolK
 	quote := c.config.GetCoin(pool.QuoteCoin)
 	return tx.MoveCall(c.config.MarginPackageID+"::margin_manager::highest_trigger_below_price", []stx.Argument{
 		tx.Object(marginManagerID),
+	}, []string{base.Type, quote.Type})
+}
+
+func (c *PoolProxyContract) PlaceReduceOnlyLimitOrder(tx *stx.Transaction, params types.PlaceMarginLimitOrderParams) stx.Argument {
+	manager := c.config.GetMarginManager(params.MarginManagerKey)
+	pool := c.config.GetPool(manager.PoolKey)
+	base := c.config.GetCoin(pool.BaseCoin)
+	quote := c.config.GetCoin(pool.QuoteCoin)
+	price := uint64(math.Round((params.Price * utils.FloatScalar * quote.Scalar) / base.Scalar))
+	quantity := uint64(math.Round(params.Quantity * base.Scalar))
+	exp := params.Expiration
+	if exp == 0 {
+		exp = utils.MaxTimestamp
+	}
+	return tx.MoveCall(c.config.MarginPackageID+"::pool_proxy::place_reduce_only_limit_order", []stx.Argument{
+		tx.Object(manager.Address),
+		pureU64(tx, parseU64(params.ClientOrderID)),
+		pureU8(tx, uint8(params.OrderType)),
+		pureU8(tx, uint8(params.SelfMatchingOption)),
+		pureU64(tx, price),
+		pureU64(tx, quantity),
+		pureBool(tx, params.IsBid),
+		pureU64(tx, exp),
+		tx.Object(c.config.MarginRegistryID),
+		tx.Object("0x6"),
+	}, []string{base.Type, quote.Type})
+}
+
+func (c *PoolProxyContract) PlaceReduceOnlyMarketOrder(tx *stx.Transaction, params types.PlaceMarginMarketOrderParams) stx.Argument {
+	manager := c.config.GetMarginManager(params.MarginManagerKey)
+	pool := c.config.GetPool(manager.PoolKey)
+	base := c.config.GetCoin(pool.BaseCoin)
+	quote := c.config.GetCoin(pool.QuoteCoin)
+	quantity := uint64(math.Round(params.Quantity * base.Scalar))
+	return tx.MoveCall(c.config.MarginPackageID+"::pool_proxy::place_reduce_only_market_order", []stx.Argument{
+		tx.Object(manager.Address),
+		pureU64(tx, parseU64(params.ClientOrderID)),
+		pureU8(tx, uint8(params.SelfMatchingOption)),
+		pureU64(tx, quantity),
+		pureBool(tx, params.IsBid),
+		tx.Object(c.config.MarginRegistryID),
+		tx.Object("0x6"),
+	}, []string{base.Type, quote.Type})
+}
+
+func (c *PoolProxyContract) ModifyOrder(tx *stx.Transaction, marginManagerKey, orderID string, newQuantity float64) stx.Argument {
+	manager := c.config.GetMarginManager(marginManagerKey)
+	pool := c.config.GetPool(manager.PoolKey)
+	base := c.config.GetCoin(pool.BaseCoin)
+	quote := c.config.GetCoin(pool.QuoteCoin)
+	qty := uint64(math.Round(newQuantity * base.Scalar))
+	return tx.MoveCall(c.config.MarginPackageID+"::pool_proxy::modify_order", []stx.Argument{
+		tx.Object(manager.Address), pureU128String(tx, orderID), pureU64(tx, qty), tx.Object(c.config.MarginRegistryID), tx.Object("0x6"),
+	}, []string{base.Type, quote.Type})
+}
+
+func (c *PoolProxyContract) SubmitProposal(tx *stx.Transaction, marginManagerKey string, params types.ProposalParams) stx.Argument {
+	manager := c.config.GetMarginManager(marginManagerKey)
+	pool := c.config.GetPool(manager.PoolKey)
+	base := c.config.GetCoin(pool.BaseCoin)
+	quote := c.config.GetCoin(pool.QuoteCoin)
+	takerFee := uint64(math.Round(params.TakerFee * utils.FloatScalar))
+	makerFee := uint64(math.Round(params.MakerFee * utils.FloatScalar))
+	stakeRequired := uint64(math.Round(params.StakeRequired * utils.DeepScalar))
+	return tx.MoveCall(c.config.MarginPackageID+"::pool_proxy::submit_proposal", []stx.Argument{
+		tx.Object(manager.Address), pureU64(tx, takerFee), pureU64(tx, makerFee), pureU64(tx, stakeRequired), tx.Object(c.config.MarginRegistryID),
 	}, []string{base.Type, quote.Type})
 }

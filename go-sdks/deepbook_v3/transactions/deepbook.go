@@ -187,7 +187,76 @@ func (c *DeepBookContract) Whitelisted(tx *stx.Transaction, poolKey string) stx.
 func (c *DeepBookContract) GetQuoteQuantityOut(tx *stx.Transaction, poolKey string, baseQuantity float64) stx.Argument {
 	base, quote, pool := c.poolTypes(poolKey)
 	q := uint64(math.Round(baseQuantity * base.Scalar))
-	return tx.MoveCall(c.poolTarget("get_quote_quantity_out"), []stx.Argument{tx.Object(pool.Address), pureU64(tx, q), tx.Object("0x6")}, []string{base.Type, quote.Type})
+	return tx.MoveCall(c.poolTarget("get_quote_quantity_out"), []stx.Argument{
+		tx.Object(pool.Address), pureU64(tx, q), tx.Object("0x6"),
+	})
+}
+
+func (c *DeepBookContract) CancelAllUserOrders(tx *stx.Transaction, poolKey, balanceManagerKey string) stx.Argument {
+	manager := c.config.GetBalanceManager(balanceManagerKey)
+	tx.SetGasBudgetIfNotSet(utils.GasBudget)
+
+	_, _, _ = tx.MakeMoveVec(tx.Object("0x6"))
+
+	return tx.MoveCall(c.poolTarget("cancel_all_user_orders"), []stx.Argument{
+		tx.Object(manager.Address),
+		tx.Object("0x6"),
+	})
+}
+
+func (c *DeepBookContract) GetOpenOrders(tx *stx.Transaction, poolKey, balanceManagerKey string) stx.Argument {
+	manager := c.config.GetBalanceManager(balanceManagerKey)
+	tx.SetGasBudgetIfNotSet(utils.GasBudget)
+
+	_, _, _ = tx.MakeMoveVec(tx.Object("0x6"))
+
+	return tx.MoveCall(c.poolTarget("get_open_orders"), []stx.Argument{
+		tx.Object(manager.Address),
+	}, []string{c.config.DeepbookPackageID + "::pool::get_open_orders"})
+}
+
+func (c *DeepBookContract) GetAccountOpenOrders(tx *stx.Transaction, poolKey, balanceManagerKey string) stx.Argument {
+	manager := c.config.GetBalanceManager(balanceManagerKey)
+	tx.SetGasBudgetIfNotSet(utils.GasBudget)
+
+	_, _, _ = tx.MakeMoveVec(tx.Object("0x6"))
+
+	return tx.MoveCall(c.poolTarget("get_account_open_orders"), []stx.Argument{
+		tx.Object(manager.Address),
+	}, []string{c.config.DeepbookPackageID + "::pool::get_account_open_orders"})
+}
+
+func (c *DeepBookContract) GetUserOpenOrders(tx *stx.Transaction, poolKey, balanceManagerKey string) stx.Argument {
+	manager := c.config.GetBalanceManager(balanceManagerKey)
+	tx.SetGasBudgetIfNotSet(utils.GasBudget)
+
+	_, _, _ = tx.MakeMoveVec(tx.Object("0x6"))
+
+	return tx.MoveCall(c.poolTarget("get_user_open_orders"), []stx.Argument{
+		tx.Object(manager.Address),
+	}, []string{c.config.DeepbookPackageID + "::pool::get_user_open_orders"})
+}
+
+func (c *DeepBookContract) GetFilledOrders(tx *stx.Transaction, poolKey, balanceManagerKey string) stx.Argument {
+	manager := c.config.GetBalanceManager(balanceManagerKey)
+	tx.SetGasBudgetIfNotSet(utils.GasBudget)
+
+	_, _, _ = tx.MakeMoveVec(tx.Object("0x6"))
+
+	return tx.MoveCall(c.poolTarget("get_filled_orders"), []stx.Argument{
+		tx.Object(manager.Address),
+	}, []string{c.config.DeepbookPackageID + "::pool::get_filled_orders"})
+}
+
+func (c *DeepBookContract) GetOrderHistory(tx *stx.Transaction, poolKey, balanceManagerKey string) stx.Argument {
+	manager := c.config.GetBalanceManager(balanceManagerKey)
+	tx.SetGasBudgetIfNotSet(utils.GasBudget)
+
+	_, _, _ = tx.MakeMoveVec(tx.Object("0x6"))
+
+	return tx.MoveCall(c.poolTarget("get_order_history"), []stx.Argument{
+		tx.Object(manager.Address),
+	}, []string{c.config.DeepbookPackageID + "::pool::get_order_history"})
 }
 
 func (c *DeepBookContract) GetBaseQuantityOut(tx *stx.Transaction, poolKey string, quoteQuantity float64) stx.Argument {
@@ -381,5 +450,215 @@ func (c *DeepBookContract) CheckLimitOrderParams(tx *stx.Transaction, poolKey st
 	q := uint64(math.Round(quantity * base.Scalar))
 	return tx.MoveCall(c.poolTarget("check_limit_order_params"), []stx.Argument{
 		tx.Object(pool.Address), pureU64(tx, p), pureU64(tx, q), pureU64(tx, expireTimestamp), tx.Object("0x6"),
+	}, []string{base.Type, quote.Type})
+}
+
+func (c *DeepBookContract) SwapExactBaseForQuote(tx *stx.Transaction, params types.SwapParams) stx.Argument {
+	base, quote, pool := c.poolTypes(params.PoolKey)
+	amount := uint64(math.Round(params.Amount * base.Scalar))
+	tx.SetGasBudgetIfNotSet(utils.GasBudget)
+	return tx.MoveCall(c.poolTarget("swap_exact_base_for_quote"), []stx.Argument{
+		tx.Object(pool.Address),
+		params.BaseCoin,
+		params.QuoteCoin,
+		params.DeepCoin,
+		pureU64(tx, amount),
+	}, []string{base.Type, quote.Type})
+}
+
+func (c *DeepBookContract) SwapExactQuoteForBase(tx *stx.Transaction, params types.SwapParams) stx.Argument {
+	base, quote, pool := c.poolTypes(params.PoolKey)
+	amount := uint64(math.Round(params.Amount * quote.Scalar))
+	tx.SetGasBudgetIfNotSet(utils.GasBudget)
+	return tx.MoveCall(c.poolTarget("swap_exact_quote_for_base"), []stx.Argument{
+		tx.Object(pool.Address),
+		params.BaseCoin,
+		params.QuoteCoin,
+		params.DeepCoin,
+		pureU64(tx, amount),
+	}, []string{base.Type, quote.Type})
+}
+
+func (c *DeepBookContract) SwapExactQuantityBaseToQuote(tx *stx.Transaction, params types.SwapParams) stx.Argument {
+	base, quote, pool := c.poolTypes(params.PoolKey)
+	amount := uint64(math.Round(params.Amount * base.Scalar))
+	tx.SetGasBudgetIfNotSet(utils.GasBudget)
+	return tx.MoveCall(c.poolTarget("swap_exact_quantity"), []stx.Argument{
+		tx.Object(pool.Address),
+		params.BaseCoin,
+		params.QuoteCoin,
+		params.DeepCoin,
+		pureU64(tx, amount),
+		pureU64(tx, 0),
+		tx.Object("0x6"),
+	}, []string{base.Type, quote.Type})
+}
+
+func (c *DeepBookContract) SwapExactQuantityQuoteToBase(tx *stx.Transaction, params types.SwapParams) stx.Argument {
+	base, quote, pool := c.poolTypes(params.PoolKey)
+	amount := uint64(math.Round(params.Amount * quote.Scalar))
+	tx.SetGasBudgetIfNotSet(utils.GasBudget)
+	return tx.MoveCall(c.poolTarget("swap_exact_quantity"), []stx.Argument{
+		tx.Object(pool.Address),
+		params.BaseCoin,
+		params.QuoteCoin,
+		params.DeepCoin,
+		pureU64(tx, 0),
+		pureU64(tx, amount),
+		tx.Object("0x6"),
+	}, []string{base.Type, quote.Type})
+}
+
+func (c *DeepBookContract) SwapExactQuantityBoth(tx *stx.Transaction, params types.SwapParams, baseAmount, quoteAmount float64) stx.Argument {
+	base, quote, pool := c.poolTypes(params.PoolKey)
+	baseQty := uint64(math.Round(baseAmount * base.Scalar))
+	quoteQty := uint64(math.Round(quoteAmount * quote.Scalar))
+	tx.SetGasBudgetIfNotSet(utils.GasBudget)
+	return tx.MoveCall(c.poolTarget("swap_exact_quantity"), []stx.Argument{
+		tx.Object(pool.Address),
+		params.BaseCoin,
+		params.QuoteCoin,
+		params.DeepCoin,
+		pureU64(tx, baseQty),
+		pureU64(tx, quoteQty),
+		tx.Object("0x6"),
+	}, []string{base.Type, quote.Type})
+}
+
+func (c *DeepBookContract) SwapExactBaseForQuoteWithManager(tx *stx.Transaction, params types.SwapWithManagerParams) stx.Argument {
+	base, quote, pool := c.poolTypes(params.PoolKey)
+	amount := uint64(math.Round(params.Amount * base.Scalar))
+	minOutQuote := uint64(math.Round(params.MinOut * quote.Scalar))
+	tx.SetGasBudgetIfNotSet(utils.GasBudget)
+	return tx.MoveCall(c.poolTarget("swap_exact_base_for_quote"), []stx.Argument{
+		tx.Object(pool.Address),
+		params.BaseCoin,
+		params.QuoteCoin,
+		tx.Object("0x6"),
+		pureU64(tx, amount),
+		pureU64(tx, minOutQuote),
+	}, []string{base.Type, quote.Type})
+}
+
+func (c *DeepBookContract) SwapExactQuoteForBaseWithManager(tx *stx.Transaction, params types.SwapWithManagerParams) stx.Argument {
+	base, quote, pool := c.poolTypes(params.PoolKey)
+	amount := uint64(math.Round(params.Amount * quote.Scalar))
+	minOutBase := uint64(math.Round(params.MinOut * base.Scalar))
+	tx.SetGasBudgetIfNotSet(utils.GasBudget)
+	return tx.MoveCall(c.poolTarget("swap_exact_quote_for_base"), []stx.Argument{
+		tx.Object(pool.Address),
+		params.BaseCoin,
+		params.QuoteCoin,
+		tx.Object("0x6"),
+		pureU64(tx, amount),
+		pureU64(tx, minOutBase),
+	}, []string{base.Type, quote.Type})
+}
+
+func (c *DeepBookContract) SwapExactQuantityWithManagerBaseToQuote(tx *stx.Transaction, params types.SwapWithManagerParams) stx.Argument {
+	base, quote, pool := c.poolTypes(params.PoolKey)
+	amount := uint64(math.Round(params.Amount * base.Scalar))
+	minOut := uint64(math.Round(params.MinOut * quote.Scalar))
+	tx.SetGasBudgetIfNotSet(utils.GasBudget)
+	return tx.MoveCall(c.poolTarget("swap_exact_quantity"), []stx.Argument{
+		tx.Object(pool.Address),
+		params.BaseCoin,
+		params.QuoteCoin,
+		tx.Object("0x6"),
+		pureU64(tx, amount),
+		pureU64(tx, 0),
+		pureU64(tx, minOut),
+	}, []string{base.Type, quote.Type})
+}
+
+func (c *DeepBookContract) SwapExactQuantityWithManagerQuoteToBase(tx *stx.Transaction, params types.SwapWithManagerParams) stx.Argument {
+	base, quote, pool := c.poolTypes(params.PoolKey)
+	amount := uint64(math.Round(params.Amount * quote.Scalar))
+	minOut := uint64(math.Round(params.MinOut * base.Scalar))
+	tx.SetGasBudgetIfNotSet(utils.GasBudget)
+	return tx.MoveCall(c.poolTarget("swap_exact_quantity"), []stx.Argument{
+		tx.Object(pool.Address),
+		params.BaseCoin,
+		params.QuoteCoin,
+		tx.Object("0x6"),
+		pureU64(tx, 0),
+		pureU64(tx, amount),
+		pureU64(tx, minOut),
+	}, []string{base.Type, quote.Type})
+}
+
+func (c *DeepBookContract) SwapWithManagerBaseForQuote(tx *stx.Transaction, params types.SwapWithManagerParams) stx.Argument {
+	base, quote, pool := c.poolTypes(params.PoolKey)
+	amount := uint64(math.Round(params.Amount * base.Scalar))
+	minOut := uint64(math.Round(params.MinOut * quote.Scalar))
+	tx.SetGasBudgetIfNotSet(utils.GasBudget)
+	return tx.MoveCall(c.poolTarget("swap_base_for_quote"), []stx.Argument{
+		tx.Object(pool.Address),
+		params.BaseCoin,
+		params.QuoteCoin,
+		tx.Object("0x6"),
+		pureU64(tx, amount),
+		pureU64(tx, minOut),
+	}, []string{base.Type, quote.Type})
+}
+
+func (c *DeepBookContract) SwapWithManagerQuoteForBase(tx *stx.Transaction, params types.SwapWithManagerParams) stx.Argument {
+	base, quote, pool := c.poolTypes(params.PoolKey)
+	amount := uint64(math.Round(params.Amount * quote.Scalar))
+	minOut := uint64(math.Round(params.MinOut * base.Scalar))
+	tx.SetGasBudgetIfNotSet(utils.GasBudget)
+	return tx.MoveCall(c.poolTarget("swap_quote_for_base"), []stx.Argument{
+		tx.Object(pool.Address),
+		params.BaseCoin,
+		params.QuoteCoin,
+		tx.Object("0x6"),
+		pureU64(tx, amount),
+		pureU64(tx, minOut),
+	}, []string{base.Type, quote.Type})
+}
+
+func (c *DeepBookContract) SwapWithManagerBaseForQuoteLimit(tx *stx.Transaction, params types.SwapWithManagerParams) stx.Argument {
+	base, quote, pool := c.poolTypes(params.PoolKey)
+	amount := uint64(math.Round(params.Amount * base.Scalar))
+	minOut := uint64(math.Round(params.MinOut * quote.Scalar))
+	tx.SetGasBudgetIfNotSet(utils.GasBudget)
+	return tx.MoveCall(c.poolTarget("swap_base_for_quote_limit"), []stx.Argument{
+		tx.Object(pool.Address),
+		params.BaseCoin,
+		params.QuoteCoin,
+		tx.Object("0x6"),
+		pureU64(tx, amount),
+		pureU64(tx, minOut),
+	}, []string{base.Type, quote.Type})
+}
+
+func (c *DeepBookContract) SwapWithManagerQuoteForBaseLimit(tx *stx.Transaction, params types.SwapWithManagerParams) stx.Argument {
+	base, quote, pool := c.poolTypes(params.PoolKey)
+	amount := uint64(math.Round(params.Amount * quote.Scalar))
+	minOut := uint64(math.Round(params.MinOut * base.Scalar))
+	tx.SetGasBudgetIfNotSet(utils.GasBudget)
+	return tx.MoveCall(c.poolTarget("swap_quote_for_base_limit"), []stx.Argument{
+		tx.Object(pool.Address),
+		params.BaseCoin,
+		params.QuoteCoin,
+		tx.Object("0x6"),
+		pureU64(tx, amount),
+		pureU64(tx, minOut),
+	}, []string{base.Type, quote.Type})
+}
+
+func (c *DeepBookContract) WithdrawSettledAmountsPermissionless(tx *stx.Transaction, poolKey, balanceManagerKey, withdrawCap string) stx.Argument {
+	base, quote, pool := c.poolTypes(poolKey)
+	manager := c.config.GetBalanceManager(balanceManagerKey)
+	return tx.MoveCall(c.poolTarget("withdraw_settled_amounts_permissionless"), []stx.Argument{
+		tx.Object(pool.Address), tx.Object(manager.Address), tx.Object(withdrawCap),
+	}, []string{base.Type, quote.Type})
+}
+
+func (c *DeepBookContract) UpdatePoolReferralMultiplier(tx *stx.Transaction, poolKey, referral string, multiplier float64) stx.Argument {
+	base, quote, pool := c.poolTypes(poolKey)
+	m := uint64(math.Round(multiplier * utils.FloatScalar))
+	return tx.MoveCall(c.poolTarget("update_pool_referral_multiplier"), []stx.Argument{
+		tx.Object(pool.Address), tx.Object(referral), pureU64(tx, m), tx.Object(c.config.RegistryID),
 	}, []string{base.Type, quote.Type})
 }

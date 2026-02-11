@@ -17,6 +17,7 @@ func newTestConfig() *utils.DeepBookConfig {
 		},
 		MarginManagers: map[string]types.MarginManager{
 			"mm1": {Address: "0x3", PoolKey: "DEEP_SUI"},
+			"mm2": {Address: "0x4", PoolKey: "DEEP_SUI"},
 		},
 	})
 }
@@ -190,5 +191,321 @@ func TestMarginContractsTargets(t *testing.T) {
 	tpsl.ConditionalOrder(tx7, "DEEP_SUI", "0x3", "1")
 	if got := firstFunction(tx7); got != "conditional_order" {
 		t.Fatalf("expected conditional_order, got %s", got)
+	}
+}
+
+func TestSwapMethods(t *testing.T) {
+	cfg := newTestConfig()
+	bm := NewBalanceManagerContract(cfg)
+	db := NewDeepBookContract(cfg, bm)
+
+	tests := []struct {
+		name string
+		fn   func(*stx.Transaction)
+		want string
+	}{
+		{"SwapExactBaseForQuote", func(tx *stx.Transaction) {
+			db.SwapExactBaseForQuote(tx, types.SwapParams{
+				PoolKey: "DEEP_SUI", Amount: 100, MinOut: 95,
+			})
+		}, "swap_exact_base_for_quote"},
+		{"SwapExactQuoteForBase", func(tx *stx.Transaction) {
+			db.SwapExactQuoteForBase(tx, types.SwapParams{
+				PoolKey: "DEEP_SUI", Amount: 100, MinOut: 95,
+			})
+		}, "swap_exact_quote_for_base"},
+		{"SwapExactQuantityBaseToQuote", func(tx *stx.Transaction) {
+			db.SwapExactQuantityBaseToQuote(tx, types.SwapParams{
+				PoolKey: "DEEP_SUI", Amount: 100, MinOut: 95,
+			})
+		}, "swap_exact_quantity"},
+		{"SwapExactQuantityQuoteToBase", func(tx *stx.Transaction) {
+			db.SwapExactQuantityQuoteToBase(tx, types.SwapParams{
+				PoolKey: "DEEP_SUI", Amount: 100, MinOut: 95,
+			})
+		}, "swap_exact_quantity"},
+		{"SwapExactQuantityBoth", func(tx *stx.Transaction) {
+			db.SwapExactQuantityBoth(tx, types.SwapParams{
+				PoolKey: "DEEP_SUI", Amount: 100, MinOut: 95,
+			}, 50, 50)
+		}, "swap_exact_quantity"},
+		{"WithdrawSettledAmountsPermissionless", func(tx *stx.Transaction) {
+			db.WithdrawSettledAmountsPermissionless(tx, "DEEP_SUI", "m1", "0x999")
+		}, "withdraw_settled_amounts_permissionless"},
+		{"UpdatePoolReferralMultiplier", func(tx *stx.Transaction) {
+			db.UpdatePoolReferralMultiplier(tx, "DEEP_SUI", "0x123", 0.5)
+		}, "update_pool_referral_multiplier"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tx := stx.NewTransaction()
+			tc.fn(tx)
+			if got := lastFunction(tx); got != tc.want {
+				t.Fatalf("expected %s, got %s", tc.want, got)
+			}
+		})
+	}
+}
+
+func TestMarginPoolMethods(t *testing.T) {
+	cfg := newTestConfig()
+	mp := NewMarginPoolContract(cfg)
+
+	tests := []struct {
+		name string
+		fn   func(*stx.Transaction)
+		want string
+	}{
+		{"SupplyToMarginPool", func(tx *stx.Transaction) {
+			mp.SupplyToMarginPool(tx, "SUI", 100)
+		}, "supply"},
+		{"WithdrawFromMarginPool", func(tx *stx.Transaction) {
+			mp.WithdrawFromMarginPool(tx, "SUI", 50)
+		}, "withdraw"},
+		{"MintSupplyReferral", func(tx *stx.Transaction) {
+			mp.MintSupplyReferral(tx, "SUI")
+		}, "mint_supply_referral"},
+		{"WithdrawReferralFees", func(tx *stx.Transaction) {
+			mp.WithdrawReferralFees(tx, "SUI", "0x123")
+		}, "withdraw_referral_fees"},
+		{"UpdateInterestWeight", func(tx *stx.Transaction) {
+			mp.UpdateInterestWeight(tx, "SUI", 0.05)
+		}, "update_interest_weight"},
+		{"SetMaxUtilizationRate", func(tx *stx.Transaction) {
+			mp.SetMaxUtilizationRate(tx, "SUI", 0.8)
+		}, "set_max_utilization_rate"},
+		{"GetUserSupplyShares", func(tx *stx.Transaction) {
+			mp.GetUserSupplyShares(tx, "SUI", "0x123")
+		}, "user_supply_shares"},
+		{"GetUserBorrowShares", func(tx *stx.Transaction) {
+			mp.GetUserBorrowShares(tx, "SUI", "0x123")
+		}, "user_borrow_shares"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tx := stx.NewTransaction()
+			tc.fn(tx)
+			if got := lastFunction(tx); got != tc.want {
+				t.Fatalf("expected %s, got %s", tc.want, got)
+			}
+		})
+	}
+}
+
+func TestMarginLiquidationsMethods(t *testing.T) {
+	cfg := newTestConfig()
+	cfg.MarginMaintainerCap = "0x999"
+	ml := NewMarginLiquidationsContract(cfg)
+
+	tests := []struct {
+		name string
+		fn   func(*stx.Transaction)
+		want string
+	}{
+		{"CreateLiquidationVault", func(tx *stx.Transaction) {
+			ml.CreateLiquidationVault(tx, "0x999")
+		}, "create_liquidation_vault"},
+		{"Deposit", func(tx *stx.Transaction) {
+			ml.Deposit(tx, "0x123", "SUI", 100)
+		}, "deposit"},
+		{"Withdraw", func(tx *stx.Transaction) {
+			ml.Withdraw(tx, "0x123", "SUI", 50)
+		}, "withdraw"},
+		{"LiquidateBase", func(tx *stx.Transaction) {
+			ml.LiquidateBase(tx, "0x123", "mm1", "DEEP_SUI", 100)
+		}, "liquidate_base"},
+		{"LiquidateQuote", func(tx *stx.Transaction) {
+			ml.LiquidateQuote(tx, "0x123", "mm1", "DEEP_SUI", 100)
+		}, "liquidate_quote"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tx := stx.NewTransaction()
+			tc.fn(tx)
+			if got := lastFunction(tx); got != tc.want {
+				t.Fatalf("expected %s, got %s", tc.want, got)
+			}
+		})
+	}
+}
+
+func TestMarginManagerMethods(t *testing.T) {
+	cfg := newTestConfig()
+	mm := NewMarginManagerContract(cfg)
+
+	tests := []struct {
+		name string
+		fn   func(*stx.Transaction)
+		want string
+	}{
+		{"ShareMarginManager", func(tx *stx.Transaction) {
+			mm.ShareMarginManager(tx, "DEEP_SUI", "mm1")
+		}, "share_margin_manager"},
+		{"WithdrawDeep", func(tx *stx.Transaction) {
+			mm.WithdrawDeep(tx, "mm1", "DEEP_SUI", 100)
+		}, "withdraw_deep"},
+		{"Liquidate", func(tx *stx.Transaction) {
+			mm.Liquidate(tx, "mm1", "mm2", "DEEP_SUI", true)
+		}, "liquidate"},
+		{"HasQuoteDebt", func(tx *stx.Transaction) {
+			mm.HasQuoteDebt(tx, "DEEP_SUI", "0x3")
+		}, "has_quote_debt"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tx := stx.NewTransaction()
+			tc.fn(tx)
+			if got := lastFunction(tx); got != tc.want {
+				t.Fatalf("expected %s, got %s", tc.want, got)
+			}
+		})
+	}
+}
+
+func TestPoolProxyMethods(t *testing.T) {
+	cfg := newTestConfig()
+	pp := NewPoolProxyContract(cfg)
+
+	tests := []struct {
+		name string
+		fn   func(*stx.Transaction)
+		want string
+	}{
+		{"PlaceReduceOnlyLimitOrder", func(tx *stx.Transaction) {
+			pp.PlaceReduceOnlyLimitOrder(tx, types.PlaceMarginLimitOrderParams{
+				MarginManagerKey: "mm1", ClientOrderID: "1", Price: 1.0, Quantity: 100, IsBid: true,
+			})
+		}, "place_reduce_only_limit_order"},
+		{"PlaceReduceOnlyMarketOrder", func(tx *stx.Transaction) {
+			pp.PlaceReduceOnlyMarketOrder(tx, types.PlaceMarginMarketOrderParams{
+				MarginManagerKey: "mm1", ClientOrderID: "1", Quantity: 100, IsBid: true,
+			})
+		}, "place_reduce_only_market_order"},
+		{"ModifyOrder", func(tx *stx.Transaction) {
+			pp.ModifyOrder(tx, "mm1", "123456789", 50)
+		}, "modify_order"},
+		{"SubmitProposal", func(tx *stx.Transaction) {
+			pp.SubmitProposal(tx, "mm1", types.ProposalParams{
+				PoolKey: "DEEP_SUI", TakerFee: 0.001, MakerFee: 0.001, StakeRequired: 1000,
+			})
+		}, "submit_proposal"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tx := stx.NewTransaction()
+			tc.fn(tx)
+			if got := lastFunction(tx); got != tc.want {
+				t.Fatalf("expected %s, got %s", tc.want, got)
+			}
+		})
+	}
+}
+
+func TestMarginAdminMethods(t *testing.T) {
+	cfg := newTestConfig()
+	cfg.MarginAdminCap = "0x999"
+	ma := NewMarginAdminContract(cfg)
+
+	tests := []struct {
+		name string
+		fn   func(*stx.Transaction)
+		want string
+	}{
+		{"MintMaintainerCap", func(tx *stx.Transaction) {
+			ma.MintMaintainerCap(tx)
+		}, "mint_maintainer_cap"},
+		{"PauseMarginManager", func(tx *stx.Transaction) {
+			ma.PauseMarginManager(tx, "mm1")
+		}, "pause_margin_manager"},
+		{"RegisterDeepbookPool", func(tx *stx.Transaction) {
+			ma.RegisterDeepbookPool(tx, "DEEP_SUI")
+		}, "register_deepbook_pool"},
+		{"PausePool", func(tx *stx.Transaction) {
+			ma.PausePool(tx, "DEEP_SUI")
+		}, "pause_pool"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tx := stx.NewTransaction()
+			tc.fn(tx)
+			if got := lastFunction(tx); got != tc.want {
+				t.Fatalf("expected %s, got %s", tc.want, got)
+			}
+		})
+	}
+}
+
+func TestMarginMaintainerMethods(t *testing.T) {
+	cfg := newTestConfig()
+	cfg.MarginMaintainerCap = "0x999"
+	mm := NewMarginMaintainerContract(cfg)
+
+	tests := []struct {
+		name string
+		fn   func(*stx.Transaction)
+		want string
+	}{
+		{"NewProtocolConfig", func(tx *stx.Transaction) {
+			mm.NewProtocolConfig(tx)
+		}, "new_protocol_config"},
+		{"UpdateInterestParams", func(tx *stx.Transaction) {
+			mm.UpdateInterestParams(tx, "SUI", types.InterestConfigParams{})
+		}, "update_interest_params"},
+		{"EnableDeepbookPoolForLoan", func(tx *stx.Transaction) {
+			mm.EnableDeepbookPoolForLoan(tx, "DEEP_SUI")
+		}, "enable_deepbook_pool_for_loan"},
+		{"CreateLiquidationVault", func(tx *stx.Transaction) {
+			mm.CreateLiquidationVault(tx)
+		}, "create_liquidation_vault"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tx := stx.NewTransaction()
+			tc.fn(tx)
+			if got := lastFunction(tx); got != tc.want {
+				t.Fatalf("expected %s, got %s", tc.want, got)
+			}
+		})
+	}
+}
+
+func TestBalanceManagerMethods(t *testing.T) {
+	cfg := newTestConfig()
+	bm := NewBalanceManagerContract(cfg)
+
+	tests := []struct {
+		name string
+		fn   func(*stx.Transaction)
+		want string
+	}{
+		{"DepositWithCap", func(tx *stx.Transaction) {
+			bm.DepositWithCap(tx, "m1", "SUI", 100, "0x123")
+		}, "deposit_with_cap"},
+		{"WithdrawWithCap", func(tx *stx.Transaction) {
+			bm.WithdrawWithCap(tx, "m1", "SUI", 100, "0x123")
+		}, "withdraw_with_cap"},
+		{"SetBalanceManagerReferral", func(tx *stx.Transaction) {
+			bm.SetBalanceManagerReferral(tx, "m1", "0xabc")
+		}, "set_balance_manager_referral"},
+		{"UnsetBalanceManagerReferral", func(tx *stx.Transaction) {
+			bm.UnsetBalanceManagerReferral(tx, "m1")
+		}, "unset_balance_manager_referral"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tx := stx.NewTransaction()
+			tc.fn(tx)
+			if got := lastFunction(tx); got != tc.want {
+				t.Fatalf("expected %s, got %s", tc.want, got)
+			}
+		})
 	}
 }

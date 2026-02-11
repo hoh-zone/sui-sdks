@@ -130,3 +130,35 @@ func (c *BalanceManagerContract) RevokeTradeCap(tx *stx.Transaction, managerKey,
 	managerID := c.config.GetBalanceManager(managerKey).Address
 	return tx.MoveCall(c.target("revoke_trade_cap"), []stx.Argument{tx.Object(managerID), tx.Object(tradeCapID)}, nil)
 }
+
+func (c *BalanceManagerContract) DepositWithCap(tx *stx.Transaction, managerKey, coinKey string, amountToDeposit float64, depositCap string) stx.Argument {
+	managerID := c.config.GetBalanceManager(managerKey).Address
+	coin := c.config.GetCoin(coinKey)
+	amount := uint64(math.Round(amountToDeposit * coin.Scalar))
+	return tx.MoveCall(c.target("deposit_with_cap"), []stx.Argument{
+		tx.Object(managerID), pureU64(tx, amount), tx.Object(depositCap),
+	}, []string{coin.Type})
+}
+
+func (c *BalanceManagerContract) WithdrawWithCap(tx *stx.Transaction, managerKey, coinKey string, amountToWithdraw float64, withdrawCap string) stx.Argument {
+	managerID := c.config.GetBalanceManager(managerKey).Address
+	coin := c.config.GetCoin(coinKey)
+	amount := uint64(math.Round(amountToWithdraw * coin.Scalar))
+	return tx.MoveCall(c.target("withdraw_with_cap"), []stx.Argument{
+		tx.Object(managerID), pureU64(tx, amount), tx.Object(withdrawCap),
+	}, []string{coin.Type})
+}
+
+func (c *BalanceManagerContract) SetBalanceManagerReferral(tx *stx.Transaction, managerKey, referral string) stx.Argument {
+	managerID := c.config.GetBalanceManager(managerKey).Address
+	return tx.MoveCall(c.target("set_balance_manager_referral"), []stx.Argument{
+		tx.Object(managerID), tx.Object(referral),
+	}, nil)
+}
+
+func (c *BalanceManagerContract) UnsetBalanceManagerReferral(tx *stx.Transaction, managerKey string) stx.Argument {
+	managerID := c.config.GetBalanceManager(managerKey).Address
+	return tx.MoveCall(c.target("unset_balance_manager_referral"), []stx.Argument{
+		tx.Object(managerID),
+	}, nil)
+}

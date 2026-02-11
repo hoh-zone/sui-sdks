@@ -1,0 +1,19 @@
+[package]
+name = "deepbook-v3"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "DeepBook v3 Sdk"
+repository = "https://github.com/sui-sdks/sui-sdks"
+
+[dependencies]
+sui = { path = "../sui" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+base64 = "0.22"
+hex = "0.4"
+
+[dev-dependencies]
+httpmock = "0.7"
+tokio = { version = "1", features = ["macros"] }
