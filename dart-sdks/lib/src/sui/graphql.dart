@@ -3,6 +3,11 @@ import 'package:graphql/client.dart' as gql;
 import 'pagination.dart';
 
 const String defaultGraphQlCoinType = '0x2::coin::Coin<0x2::sui::SUI>';
+const Map<String, String> defaultGraphQlEndpoints = {
+  'mainnet': 'https://sui-mainnet.mystenlabs.com/graphql',
+  'testnet': 'https://graphql.testnet.sui.io/graphql',
+  'devnet': 'https://graphql.devnet.sui.io/graphql',
+};
 
 abstract class GraphQlTransport {
   Future<Map<String, dynamic>> execute(
@@ -15,7 +20,7 @@ class OfficialGraphQlTransport implements GraphQlTransport {
   OfficialGraphQlTransport({
     required String endpoint,
     Duration timeout = const Duration(seconds: 30),
-  }) : _client = gql.GraphQLClient(
+  })  : _client = gql.GraphQLClient(
           link: gql.HttpLink(endpoint),
           cache: gql.GraphQLCache(store: gql.InMemoryStore()),
         ),
@@ -55,13 +60,31 @@ class GraphQlClient {
     required this.endpoint,
     this.timeout = const Duration(seconds: 30),
     GraphQlTransport? transport,
-  }) : _transport = transport ?? OfficialGraphQlTransport(endpoint: endpoint, timeout: timeout);
+  }) : _transport = transport ??
+            OfficialGraphQlTransport(endpoint: endpoint, timeout: timeout);
 
   final String endpoint;
   final Duration timeout;
   final GraphQlTransport _transport;
 
-  Future<Map<String, dynamic>> execute(String query, {Map<String, dynamic>? variables}) {
+  static GraphQlClient fromNetwork({
+    String network = 'testnet',
+    Duration timeout = const Duration(seconds: 30),
+    GraphQlTransport? transport,
+  }) {
+    final endpoint = defaultGraphQlEndpoints[network];
+    if (endpoint == null) {
+      throw ArgumentError.value(network, 'network', 'unsupported network');
+    }
+    return GraphQlClient(
+      endpoint: endpoint,
+      timeout: timeout,
+      transport: transport,
+    );
+  }
+
+  Future<Map<String, dynamic>> execute(String query,
+      {Map<String, dynamic>? variables}) {
     return _executeChecked(query, variables: variables);
   }
 
@@ -80,11 +103,13 @@ query discoverRpcApi {
     );
   }
 
-  Future<Map<String, dynamic>> query(String query, {Map<String, dynamic>? variables}) {
+  Future<Map<String, dynamic>> query(String query,
+      {Map<String, dynamic>? variables}) {
     return execute(query, variables: variables);
   }
 
-  Future<Map<String, dynamic>> mutation(String query, {Map<String, dynamic>? variables}) {
+  Future<Map<String, dynamic>> mutation(String query,
+      {Map<String, dynamic>? variables}) {
     return execute(query, variables: variables);
   }
 
@@ -141,13 +166,38 @@ query getCoins($owner: SuiAddress!, $first: Int, $cursor: String, $type: String 
     );
   }
 
+  Future<Map<String, dynamic>> listCoins({
+    required String owner,
+    String coinType = defaultGraphQlCoinType,
+    String? cursor,
+    int? limit,
+  }) {
+    return getCoins(
+      owner: owner,
+      coinType: coinType,
+      cursor: cursor,
+      limit: limit,
+    );
+  }
+
+  Future<Map<String, dynamic>> getAllCoins({
+    required String owner,
+    String coinType = defaultGraphQlCoinType,
+    String? cursor,
+    int? limit,
+  }) {
+    return getCoins(
+        owner: owner, coinType: coinType, cursor: cursor, limit: limit);
+  }
+
   Future<Map<String, dynamic>> getGas({
     required String owner,
     String coinType = defaultGraphQlCoinType,
     String? cursor,
     int? limit,
   }) {
-    return getCoins(owner: owner, coinType: coinType, cursor: cursor, limit: limit);
+    return getCoins(
+        owner: owner, coinType: coinType, cursor: cursor, limit: limit);
   }
 
   Stream<Map<String, dynamic>> iterCoins({
@@ -159,12 +209,28 @@ query getCoins($owner: SuiAddress!, $first: Int, $cursor: String, $type: String 
   }) {
     return paginate(
       (c) async => _toPage(
-        await getCoins(owner: owner, coinType: coinType, cursor: c, limit: limit),
+        await getCoins(
+            owner: owner, coinType: coinType, cursor: c, limit: limit),
         const ['address', 'objects'],
       ),
       startCursor: cursor,
       maxItems: maxItems,
     );
+  }
+
+  Stream<Map<String, dynamic>> iterAllCoins({
+    required String owner,
+    String coinType = defaultGraphQlCoinType,
+    String? cursor,
+    int limit = 100,
+    int? maxItems,
+  }) {
+    return iterCoins(
+        owner: owner,
+        coinType: coinType,
+        cursor: cursor,
+        limit: limit,
+        maxItems: maxItems);
   }
 
   Future<Map<String, dynamic>> getAllBalances({
@@ -187,8 +253,20 @@ query getAllBalances($owner: SuiAddress!, $limit: Int, $cursor: String) {
   }
 }
 ''',
-      variables: <String, dynamic>{'owner': owner, 'limit': limit, 'cursor': cursor},
+      variables: <String, dynamic>{
+        'owner': owner,
+        'limit': limit,
+        'cursor': cursor
+      },
     );
+  }
+
+  Future<Map<String, dynamic>> listBalances({
+    required String owner,
+    String? cursor,
+    int? limit,
+  }) {
+    return getAllBalances(owner: owner, cursor: cursor, limit: limit);
   }
 
   Stream<Map<String, dynamic>> iterAllBalances({
@@ -252,7 +330,14 @@ query defaultSuinsName($address: SuiAddress!) {
     );
   }
 
-  Future<Map<String, dynamic>> resolveNameServiceAddress({required String name}) {
+  Future<Map<String, dynamic>> defaultNameServiceName({
+    required String address,
+  }) {
+    return getDefaultSuinsName(address: address);
+  }
+
+  Future<Map<String, dynamic>> resolveNameServiceAddress(
+      {required String name}) {
     return query(
       r'''
 query resolveNameServiceAddress($name: String!) {
@@ -320,9 +405,16 @@ query multiGetObjects($objectKeys: [ObjectKey!]!) {
 }
 ''',
       variables: <String, dynamic>{
-        'objectKeys': objectIds.map((id) => <String, dynamic>{'address': id}).toList(),
+        'objectKeys':
+            objectIds.map((id) => <String, dynamic>{'address': id}).toList(),
       },
     );
+  }
+
+  Future<Map<String, dynamic>> getObjects({
+    required List<String> objectIds,
+  }) {
+    return multiGetObjects(objectIds: objectIds);
   }
 
   Future<Map<String, dynamic>> getEventsByTransaction({
@@ -397,7 +489,11 @@ query queryTransactionBlocks($first: Int, $cursor: String, $filter: TransactionF
   }
 }
 ''',
-      variables: <String, dynamic>{'first': limit, 'cursor': cursor, 'filter': filter},
+      variables: <String, dynamic>{
+        'first': limit,
+        'cursor': cursor,
+        'filter': filter
+      },
     );
   }
 
@@ -435,7 +531,11 @@ query queryEvents($first: Int, $cursor: String, $filter: EventFilter) {
   }
 }
 ''',
-      variables: <String, dynamic>{'first': limit, 'cursor': cursor, 'filter': filter},
+      variables: <String, dynamic>{
+        'first': limit,
+        'cursor': cursor,
+        'filter': filter
+      },
     );
   }
 
@@ -488,6 +588,20 @@ query simulateTransaction(
     );
   }
 
+  Future<Map<String, dynamic>> simulateTransactionBlock({
+    required String txBytesB64,
+    bool checksEnabled = true,
+    bool doGasSelection = false,
+    bool includeCommandResults = false,
+  }) {
+    return dryRun(
+      txBytesB64: txBytesB64,
+      checksEnabled: checksEnabled,
+      doGasSelection: doGasSelection,
+      includeCommandResults: includeCommandResults,
+    );
+  }
+
   Future<Map<String, dynamic>> dryRun({
     required String txBytesB64,
     bool checksEnabled = true,
@@ -498,6 +612,20 @@ query simulateTransaction(
       transaction: <String, dynamic>{
         'bcs': <String, dynamic>{'value': txBytesB64}
       },
+      checksEnabled: checksEnabled,
+      doGasSelection: doGasSelection,
+      includeCommandResults: includeCommandResults,
+    );
+  }
+
+  Future<Map<String, dynamic>> dryRunTransactionBlock({
+    required String txBytesB64,
+    bool checksEnabled = true,
+    bool doGasSelection = false,
+    bool includeCommandResults = false,
+  }) {
+    return dryRun(
+      txBytesB64: txBytesB64,
       checksEnabled: checksEnabled,
       doGasSelection: doGasSelection,
       includeCommandResults: includeCommandResults,
@@ -517,7 +645,10 @@ query resolveTransaction($transaction: JSON!, $doGasSelection: Boolean = true) {
   }
 }
 ''',
-      variables: <String, dynamic>{'transaction': transaction, 'doGasSelection': doGasSelection},
+      variables: <String, dynamic>{
+        'transaction': transaction,
+        'doGasSelection': doGasSelection
+      },
     );
   }
 
@@ -547,6 +678,20 @@ query getOwnedObjects($owner: SuiAddress!, $limit: Int, $cursor: String, $filter
     );
   }
 
+  Future<Map<String, dynamic>> listOwnedObjects({
+    required String owner,
+    Map<String, dynamic>? filter,
+    String? cursor,
+    int? limit,
+  }) {
+    return getOwnedObjects(
+      owner: owner,
+      filter: filter,
+      cursor: cursor,
+      limit: limit,
+    );
+  }
+
   Stream<Map<String, dynamic>> iterOwnedObjects({
     required String owner,
     Map<String, dynamic>? filter,
@@ -556,7 +701,8 @@ query getOwnedObjects($owner: SuiAddress!, $limit: Int, $cursor: String, $filter
   }) {
     return paginate(
       (c) async => _toPage(
-        await getOwnedObjects(owner: owner, filter: filter, cursor: c, limit: limit),
+        await getOwnedObjects(
+            owner: owner, filter: filter, cursor: c, limit: limit),
         const ['address', 'objects'],
       ),
       startCursor: cursor,
@@ -583,8 +729,20 @@ query getDynamicFields($parentId: SuiAddress!, $first: Int, $cursor: String) {
   }
 }
 ''',
-      variables: <String, dynamic>{'parentId': parentId, 'first': limit, 'cursor': cursor},
+      variables: <String, dynamic>{
+        'parentId': parentId,
+        'first': limit,
+        'cursor': cursor
+      },
     );
+  }
+
+  Future<Map<String, dynamic>> listDynamicFields({
+    required String parentId,
+    String? cursor,
+    int? limit,
+  }) {
+    return getDynamicFields(parentId: parentId, cursor: cursor, limit: limit);
   }
 
   Stream<Map<String, dynamic>> iterDynamicFields({
@@ -617,6 +775,32 @@ query getTransactionBlock($digest: String!) {
     );
   }
 
+  Future<Map<String, dynamic>> getTransaction({required String digest}) {
+    return getTransactionBlock(digest: digest);
+  }
+
+  Future<Map<String, dynamic>> multiGetTransactionBlocks({
+    required List<String> digests,
+  }) {
+    return query(
+      r'''
+query multiGetTransactionBlocks($keys: [String!]!) {
+  multiGetTransactions(keys: $keys) {
+    digest
+    signatures { signatureBytes }
+  }
+}
+''',
+      variables: <String, dynamic>{'keys': digests},
+    );
+  }
+
+  Future<Map<String, dynamic>> getTransactions({
+    required List<String> digests,
+  }) {
+    return multiGetTransactionBlocks(digests: digests);
+  }
+
   Future<Map<String, dynamic>> executeTransactionBlock({
     required String transactionDataBcs,
     required List<String> signatures,
@@ -634,6 +818,16 @@ mutation executeTransaction($transactionDataBcs: Base64!, $signatures: [Base64!]
         'transactionDataBcs': transactionDataBcs,
         'signatures': signatures,
       },
+    );
+  }
+
+  Future<Map<String, dynamic>> executeTransaction({
+    required String transactionDataBcs,
+    required List<String> signatures,
+  }) {
+    return executeTransactionBlock(
+      transactionDataBcs: transactionDataBcs,
+      signatures: signatures,
     );
   }
 
@@ -680,7 +874,11 @@ query getCheckpoints($first: Int, $cursor: String, $filter: CheckpointFilter) {
   }
 }
 ''',
-      variables: <String, dynamic>{'first': limit, 'cursor': cursor, 'filter': filter},
+      variables: <String, dynamic>{
+        'first': limit,
+        'cursor': cursor,
+        'filter': filter
+      },
     );
   }
 
@@ -780,7 +978,11 @@ query getCommitteeInfo($epochId: UInt53, $first: Int, $cursor: String) {
   }
 }
 ''',
-      variables: <String, dynamic>{'epochId': epoch, 'first': limit, 'cursor': cursor},
+      variables: <String, dynamic>{
+        'epochId': epoch,
+        'first': limit,
+        'cursor': cursor
+      },
     );
   }
 
@@ -803,7 +1005,8 @@ query getCommitteeInfo($epochId: UInt53, $first: Int, $cursor: String) {
     return multiGetObjects(objectIds: stakedSuiIds);
   }
 
-  Future<Map<String, dynamic>> _executeChecked(String query, {Map<String, dynamic>? variables}) async {
+  Future<Map<String, dynamic>> _executeChecked(String query,
+      {Map<String, dynamic>? variables}) async {
     final out = await _transport.execute(query, variables: variables);
     final errors = out['errors'];
     if (errors is List && errors.isNotEmpty) {
@@ -826,11 +1029,15 @@ query getCommitteeInfo($epochId: UInt53, $first: Int, $cursor: String) {
     final conn = cur is Map<String, dynamic> ? cur : const <String, dynamic>{};
     final nodes = conn['nodes'];
     final pageInfo = conn['pageInfo'];
-    final hasNext = pageInfo is Map<String, dynamic> && pageInfo['hasNextPage'] == true;
-    final endCursor = pageInfo is Map<String, dynamic> ? pageInfo['endCursor'] : null;
+    final hasNext =
+        pageInfo is Map<String, dynamic> && pageInfo['hasNextPage'] == true;
+    final endCursor =
+        pageInfo is Map<String, dynamic> ? pageInfo['endCursor'] : null;
 
     return <String, dynamic>{
-      'data': nodes is List ? nodes.cast<Map<String, dynamic>>() : const <Map<String, dynamic>>[],
+      'data': nodes is List
+          ? nodes.cast<Map<String, dynamic>>()
+          : const <Map<String, dynamic>>[],
       'hasNextPage': hasNext,
       'nextCursor': endCursor,
     };

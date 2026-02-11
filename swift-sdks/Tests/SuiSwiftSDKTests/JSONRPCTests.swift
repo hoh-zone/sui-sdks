@@ -129,6 +129,158 @@ final class JSONRPCTests: XCTestCase {
         XCTAssertEqual(page.data.count, 1)
         XCTAssertEqual(page.hasNextPage, false)
     }
+
+    func testDryRunTransactionBlockBytesEncodesBase64() async throws {
+        let expectedBase64 = Data([0xAA, 0xBB, 0xCC]).base64EncodedString()
+        let session = makeMockedSession {
+            let payload = try XCTUnwrap($0.httpBody)
+            let body = try JSONSerialization.jsonObject(with: payload) as? [String: Any]
+            XCTAssertEqual(body?["method"] as? String, "sui_dryRunTransactionBlock")
+            let params = try XCTUnwrap(body?["params"] as? [Any])
+            XCTAssertEqual(params.first as? String, expectedBase64)
+            return (200, ["jsonrpc": "2.0", "id": 1, "result": ["effects": [:]]])
+        }
+
+        let client = SuiClient(
+            endpoint: URL(string: "https://example.com")!,
+            transport: HTTPJSONRPCTransport(url: URL(string: "https://example.com")!, session: session)
+        )
+
+        _ = try await client.dryRunTransactionBlock(transactionBlockBytes: [0xAA, 0xBB, 0xCC])
+    }
+
+    func testGetEventsAliasUsesSuiGetEvents() async throws {
+        let session = makeMockedSession {
+            let payload = try XCTUnwrap($0.httpBody)
+            let body = try JSONSerialization.jsonObject(with: payload) as? [String: Any]
+            XCTAssertEqual(body?["method"] as? String, "sui_getEvents")
+            return (200, ["jsonrpc": "2.0", "id": 1, "result": []])
+        }
+
+        let client = SuiClient(
+            endpoint: URL(string: "https://example.com")!,
+            transport: HTTPJSONRPCTransport(url: URL(string: "https://example.com")!, session: session)
+        )
+        let events = try await client.getEvents(transactionDigest: "11111111111111111111111111111111")
+        XCTAssertEqual(events.count, 0)
+    }
+
+    func testGetStakesByIdsAliasUsesSuixGetStakesByIds() async throws {
+        let session = makeMockedSession {
+            let payload = try XCTUnwrap($0.httpBody)
+            let body = try JSONSerialization.jsonObject(with: payload) as? [String: Any]
+            XCTAssertEqual(body?["method"] as? String, "suix_getStakesByIds")
+            return (200, ["jsonrpc": "2.0", "id": 1, "result": []])
+        }
+
+        let client = SuiClient(
+            endpoint: URL(string: "https://example.com")!,
+            transport: HTTPJSONRPCTransport(url: URL(string: "https://example.com")!, session: session)
+        )
+        let stakes = try await client.getStakesByIds(stakedSuiIDs: ["0x5"])
+        XCTAssertEqual(stakes.count, 0)
+    }
+
+    func testGetRpcApiVersionAlias() async throws {
+        let session = makeMockedSession {
+            let payload = try XCTUnwrap($0.httpBody)
+            let body = try JSONSerialization.jsonObject(with: payload) as? [String: Any]
+            XCTAssertEqual(body?["method"] as? String, "rpc.discover")
+            return (200, ["jsonrpc": "2.0", "id": 1, "result": ["info": ["version": "9.9.9"]]])
+        }
+
+        let client = SuiClient(
+            endpoint: URL(string: "https://example.com")!,
+            transport: HTTPJSONRPCTransport(url: URL(string: "https://example.com")!, session: session)
+        )
+        let version = try await client.getRpcApiVersion()
+        XCTAssertEqual(version, "9.9.9")
+    }
+
+    func testExecuteTransactionBlockDataSingleSignature() async throws {
+        let txData = Data([0x01, 0x02, 0x03, 0x04])
+        let txBase64 = txData.base64EncodedString()
+        let signature = "AA=="
+        let session = makeMockedSession {
+            let payload = try XCTUnwrap($0.httpBody)
+            let body = try JSONSerialization.jsonObject(with: payload) as? [String: Any]
+            XCTAssertEqual(body?["method"] as? String, "sui_executeTransactionBlock")
+            let params = try XCTUnwrap(body?["params"] as? [Any])
+            XCTAssertEqual(params[0] as? String, txBase64)
+            XCTAssertEqual(params[1] as? [String], [signature])
+            return (200, ["jsonrpc": "2.0", "id": 1, "result": ["digest": "11111111111111111111111111111111"]])
+        }
+
+        let client = SuiClient(
+            endpoint: URL(string: "https://example.com")!,
+            transport: HTTPJSONRPCTransport(url: URL(string: "https://example.com")!, session: session)
+        )
+        let response = try await client.executeTransactionBlock(
+            transactionBlockData: txData,
+            signature: signature
+        )
+        XCTAssertEqual(response["digest"] as? String, "11111111111111111111111111111111")
+    }
+
+    func testQueryEventsOrderAscendingMapsToFalse() async throws {
+        let session = makeMockedSession {
+            let payload = try XCTUnwrap($0.httpBody)
+            let body = try JSONSerialization.jsonObject(with: payload) as? [String: Any]
+            XCTAssertEqual(body?["method"] as? String, "suix_queryEvents")
+            let params = try XCTUnwrap(body?["params"] as? [Any])
+            XCTAssertEqual(params[3] as? Bool, false)
+            return (
+                200,
+                [
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "result": [
+                        "data": [],
+                        "nextCursor": NSNull(),
+                        "hasNextPage": false,
+                    ],
+                ]
+            )
+        }
+
+        let client = SuiClient(
+            endpoint: URL(string: "https://example.com")!,
+            transport: HTTPJSONRPCTransport(url: URL(string: "https://example.com")!, session: session)
+        )
+
+        let page = try await client.queryEvents(query: [:], order: .ascending)
+        XCTAssertEqual(page["hasNextPage"] as? Bool, false)
+    }
+
+    func testGetCheckpointsOrderDescendingMapsToTrue() async throws {
+        let session = makeMockedSession {
+            let payload = try XCTUnwrap($0.httpBody)
+            let body = try JSONSerialization.jsonObject(with: payload) as? [String: Any]
+            XCTAssertEqual(body?["method"] as? String, "sui_getCheckpoints")
+            let params = try XCTUnwrap(body?["params"] as? [Any])
+            XCTAssertEqual(params[2] as? Bool, true)
+            return (
+                200,
+                [
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "result": [
+                        "data": [],
+                        "nextCursor": NSNull(),
+                        "hasNextPage": false,
+                    ],
+                ]
+            )
+        }
+
+        let client = SuiClient(
+            endpoint: URL(string: "https://example.com")!,
+            transport: HTTPJSONRPCTransport(url: URL(string: "https://example.com")!, session: session)
+        )
+
+        let page = try await client.getCheckpoints(order: .descending)
+        XCTAssertEqual(page["hasNextPage"] as? Bool, false)
+    }
 }
 
 private typealias MockResponse = (status: Int, json: Any)

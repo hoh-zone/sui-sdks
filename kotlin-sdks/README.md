@@ -55,6 +55,12 @@ Kotlin baseline SDK implementation aligned with `go-sdks` / `py-sdks`, with API 
   - Timeout/headers configurable
 - `com.suisdks.sui.verify`
   - `VerifyFacade`
+- `com.suisdks.sui.deepbook_v3`
+  - `DeepBookConfig` / `DeepBookConfig.testnet(...)`
+  - `DeepBookClient` (dry-run view baseline; `fromJsonRpc` / `fromSuiClient`)
+  - Includes quantity/price/order/level2/deep-price views plus vault/trade/book/account, margin-registry, margin-manager, and margin-pool query helpers
+  - Added price-info getters (`getPriceInfoObject`, `getPriceInfoObjects`, `getPriceInfoObjectAge`) and formatted `decimals` overloads for margin manager/pool amount views
+  - Added bulk margin-manager state query by manager-id/pool-key map (`getMarginManagerStates(map, decimals)`)
 - `com.suisdks.sui.utils`
   - `normalizeSuiAddress` / `normalizeSuiObjectId`
   - `isValidSuiAddress` / `isValidSuiObjectId` / `isValidTransactionDigest`

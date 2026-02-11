@@ -1,10 +1,14 @@
 import 'dart:convert';
+import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:grpc/grpc.dart' as grpc;
 import 'pagination.dart';
+import 'transactions.dart';
 
 class GrpcRequest {
-  const GrpcRequest({required this.method, this.params = const <dynamic>[], this.metadata});
+  const GrpcRequest(
+      {required this.method, this.params = const <dynamic>[], this.metadata});
 
   final String method;
   final List<dynamic> params;
@@ -32,6 +36,12 @@ typedef StubInvoker = Future<Map<String, dynamic>> Function({
 typedef GrpcMethodMapper = String Function(String method);
 
 String identityGrpcMethodMapper(String method) => method;
+
+const Map<String, String> defaultGrpcEndpoints = {
+  'mainnet': 'https://fullnode.mainnet.sui.io:443',
+  'testnet': 'https://fullnode.testnet.sui.io:443',
+  'devnet': 'https://fullnode.devnet.sui.io:443',
+};
 
 String defaultJsonRpcToGrpcMethodMapper(String method) {
   switch (method) {
@@ -69,12 +79,28 @@ String defaultJsonRpcToGrpcMethodMapper(String method) {
       return 'GetLatestSuiSystemState';
     case 'suix_getValidatorsApy':
       return 'GetValidatorsApy';
+    case 'suix_getNetworkMetrics':
+      return 'GetNetworkMetrics';
+    case 'suix_getLatestAddressMetrics':
+      return 'GetLatestAddressMetrics';
+    case 'suix_getEpochMetrics':
+      return 'GetEpochMetrics';
+    case 'suix_getAllEpochAddressMetrics':
+      return 'GetAllEpochAddressMetrics';
+    case 'suix_getMoveCallMetrics':
+      return 'GetMoveCallMetrics';
+    case 'suix_getCurrentEpoch':
+      return 'GetCurrentEpoch';
+    case 'suix_getEpochs':
+      return 'GetEpochs';
     case 'suix_getCommitteeInfo':
       return 'GetCommitteeInfo';
     case 'sui_getProtocolConfig':
       return 'GetProtocolConfig';
     case 'sui_getChainIdentifier':
       return 'GetChainIdentifier';
+    case 'sui_getTotalTransactionBlocks':
+      return 'GetTotalTransactionBlocks';
     case 'suix_getStakes':
       return 'GetStakes';
     case 'suix_getStakesByIds':
@@ -113,6 +139,10 @@ String defaultJsonRpcToGrpcMethodMapper(String method) {
       return 'DryRunTransactionBlock';
     case 'sui_executeTransactionBlock':
       return 'ExecuteTransactionBlock';
+    case 'sui_devInspectTransactionBlock':
+      return 'DevInspectTransactionBlock';
+    case 'sui_verifyZkLoginSignature':
+      return 'VerifyZkLoginSignature';
     default:
       return method;
   }
@@ -152,10 +182,12 @@ class OfficialGrpcTransport implements GrpcTransport {
     required this.port,
     this.service = 'sui.rpc.v2.Service',
     this.methodMapper = identityGrpcMethodMapper,
-    this.options = const grpc.ChannelOptions(credentials: grpc.ChannelCredentials.insecure()),
+    this.options = const grpc.ChannelOptions(
+        credentials: grpc.ChannelCredentials.insecure()),
     this.timeout = const Duration(seconds: 30),
     grpc.ClientChannel? channel,
-  }) : _channel = channel ?? grpc.ClientChannel(host, port: port, options: options);
+  }) : _channel =
+            channel ?? grpc.ClientChannel(host, port: port, options: options);
 
   final String host;
   final int port;
@@ -239,7 +271,8 @@ class SuiGrpcClient {
     String service = 'sui.rpc.v2.Service',
     GrpcMethodMapper methodMapper = identityGrpcMethodMapper,
     Duration timeout = const Duration(seconds: 30),
-    grpc.ChannelOptions options = const grpc.ChannelOptions(credentials: grpc.ChannelCredentials.insecure()),
+    grpc.ChannelOptions options = const grpc.ChannelOptions(
+        credentials: grpc.ChannelCredentials.insecure()),
   }) {
     return SuiGrpcClient(
       transport: OfficialGrpcTransport(
@@ -253,6 +286,31 @@ class SuiGrpcClient {
     );
   }
 
+  factory SuiGrpcClient.fromNetwork({
+    String network = 'testnet',
+    String service = 'sui.rpc.v2.Service',
+    GrpcMethodMapper methodMapper = identityGrpcMethodMapper,
+    Duration timeout = const Duration(seconds: 30),
+    grpc.ChannelOptions options = const grpc.ChannelOptions(
+        credentials: grpc.ChannelCredentials.insecure()),
+  }) {
+    final endpoint = defaultGrpcEndpoints[network];
+    if (endpoint == null) {
+      throw ArgumentError.value(network, 'network', 'unsupported network');
+    }
+    final uri = Uri.parse(endpoint);
+    final host = uri.host;
+    final port = uri.hasPort ? uri.port : (uri.scheme == 'https' ? 443 : 80);
+    return SuiGrpcClient.fromEndpoint(
+      host: host,
+      port: port,
+      service: service,
+      methodMapper: methodMapper,
+      timeout: timeout,
+      options: options,
+    );
+  }
+
   Future<GrpcResponse> unary(GrpcRequest request) async {
     final response = await _transport.unary(request);
     if (response.error != null) {
@@ -261,8 +319,10 @@ class SuiGrpcClient {
     return response;
   }
 
-  Future<Map<String, dynamic>> call(String method, [List<dynamic>? params]) async {
-    final response = await unary(GrpcRequest(method: method, params: params ?? const <dynamic>[]));
+  Future<Map<String, dynamic>> call(String method,
+      [List<dynamic>? params]) async {
+    final response = await unary(
+        GrpcRequest(method: method, params: params ?? const <dynamic>[]));
     if (response.raw != null) {
       return response.raw!;
     }
@@ -281,6 +341,10 @@ class SuiGrpcClient {
     return call('sui_dryRunTransactionBlock', [txBytesB64]);
   }
 
+  Future<Map<String, dynamic>> dryRunTransactionBlock(String txBytesB64) {
+    return dryRun(txBytesB64);
+  }
+
   Future<Map<String, dynamic>> getCoins({
     required String owner,
     String coinType = '0x2::sui::SUI',
@@ -296,7 +360,8 @@ class SuiGrpcClient {
     String? cursor,
     int? limit,
   }) {
-    return getCoins(owner: owner, coinType: coinType, cursor: cursor, limit: limit);
+    return getCoins(
+        owner: owner, coinType: coinType, cursor: cursor, limit: limit);
   }
 
   Future<Map<String, dynamic>> getAllCoins({
@@ -305,6 +370,20 @@ class SuiGrpcClient {
     int? limit,
   }) {
     return call('suix_getAllCoins', [owner, cursor, limit]);
+  }
+
+  Future<Map<String, dynamic>> listCoins({
+    required String owner,
+    String coinType = '0x2::sui::SUI',
+    String? cursor,
+    int? limit,
+  }) {
+    return getCoins(
+      owner: owner,
+      coinType: coinType,
+      cursor: cursor,
+      limit: limit,
+    );
   }
 
   Stream<Map<String, dynamic>> iterAllCoins({
@@ -335,6 +414,10 @@ class SuiGrpcClient {
     return call('suix_getAllBalances', [owner]);
   }
 
+  Future<Map<String, dynamic>> listBalances({required String owner}) {
+    return getAllBalances(owner: owner);
+  }
+
   Future<Map<String, dynamic>> getCoinMetadata(String coinType) {
     return call('suix_getCoinMetadata', [coinType]);
   }
@@ -347,8 +430,22 @@ class SuiGrpcClient {
     return call('rpc.discover');
   }
 
-  Future<Map<String, dynamic>> getObject(String objectId, [Map<String, dynamic>? options]) {
-    return call('sui_getObject', [objectId, options ?? const <String, dynamic>{}]);
+  Future<String?> getRpcApiVersion() async {
+    final spec = await discoverRpcApi();
+    final info = spec['info'] ??
+        (spec['result'] is Map<String, dynamic>
+            ? (spec['result'] as Map<String, dynamic>)['info']
+            : null);
+    if (info is Map<String, dynamic> && info['version'] is String) {
+      return info['version'] as String;
+    }
+    return null;
+  }
+
+  Future<Map<String, dynamic>> getObject(String objectId,
+      [Map<String, dynamic>? options]) {
+    return call(
+        'sui_getObject', [objectId, options ?? const <String, dynamic>{}]);
   }
 
   Future<Map<String, dynamic>> getPackage(String packageId) {
@@ -369,7 +466,22 @@ class SuiGrpcClient {
     String? cursor,
     int? limit,
   }) {
-    return call('suix_getOwnedObjects', [owner, query ?? const <String, dynamic>{}, cursor, limit]);
+    return call('suix_getOwnedObjects',
+        [owner, query ?? const <String, dynamic>{}, cursor, limit]);
+  }
+
+  Future<Map<String, dynamic>> listOwnedObjects({
+    required String owner,
+    Map<String, dynamic>? query,
+    String? cursor,
+    int? limit,
+  }) {
+    return getOwnedObjects(
+      owner: owner,
+      query: query,
+      cursor: cursor,
+      limit: limit,
+    );
   }
 
   Stream<Map<String, dynamic>> iterOwnedObjects({
@@ -381,7 +493,8 @@ class SuiGrpcClient {
   }) {
     return paginate(
       (c) async {
-        final page = await getOwnedObjects(owner: owner, query: query, cursor: c, limit: limit);
+        final page = await getOwnedObjects(
+            owner: owner, query: query, cursor: c, limit: limit);
         final result = page['result'];
         return result is Map<String, dynamic> ? result : page;
       },
@@ -390,8 +503,17 @@ class SuiGrpcClient {
     );
   }
 
-  Future<Map<String, dynamic>> getDynamicFields(String parentObjectId, {String? cursor, int? limit}) {
+  Future<Map<String, dynamic>> getDynamicFields(String parentObjectId,
+      {String? cursor, int? limit}) {
     return call('suix_getDynamicFields', [parentObjectId, cursor, limit]);
+  }
+
+  Future<Map<String, dynamic>> listDynamicFields(
+    String parentObjectId, {
+    String? cursor,
+    int? limit,
+  }) {
+    return getDynamicFields(parentObjectId, cursor: cursor, limit: limit);
   }
 
   Future<Map<String, dynamic>> getDynamicFieldObject(
@@ -399,6 +521,13 @@ class SuiGrpcClient {
     Map<String, dynamic> name,
   ) {
     return call('suix_getDynamicFieldObject', [parentObjectId, name]);
+  }
+
+  Future<Map<String, dynamic>> getDynamicField(
+    String parentObjectId,
+    Map<String, dynamic> name,
+  ) {
+    return getDynamicFieldObject(parentObjectId, name);
   }
 
   Stream<Map<String, dynamic>> iterDynamicFields({
@@ -409,7 +538,8 @@ class SuiGrpcClient {
   }) {
     return paginate(
       (c) async {
-        final page = await getDynamicFields(parentObjectId, cursor: c, limit: limit);
+        final page =
+            await getDynamicFields(parentObjectId, cursor: c, limit: limit);
         final result = page['result'];
         return result is Map<String, dynamic> ? result : page;
       },
@@ -418,23 +548,57 @@ class SuiGrpcClient {
     );
   }
 
-  Future<Map<String, dynamic>> multiGetObjects(List<String> objectIds, [Map<String, dynamic>? options]) {
-    return call('sui_multiGetObjects', [objectIds, options ?? const <String, dynamic>{}]);
+  Future<Map<String, dynamic>> multiGetObjects(List<String> objectIds,
+      [Map<String, dynamic>? options]) {
+    return call('sui_multiGetObjects',
+        [objectIds, options ?? const <String, dynamic>{}]);
   }
 
-  Future<Map<String, dynamic>> getTransactionBlock(String digest, [Map<String, dynamic>? options]) {
-    return call('sui_getTransactionBlock', [digest, options ?? const <String, dynamic>{}]);
+  Future<Map<String, dynamic>> getObjects(List<String> objectIds,
+      [Map<String, dynamic>? options]) {
+    return multiGetObjects(objectIds, options);
+  }
+
+  Future<Map<String, dynamic>> getTransactionBlock(String digest,
+      [Map<String, dynamic>? options]) {
+    return call('sui_getTransactionBlock',
+        [digest, options ?? const <String, dynamic>{}]);
+  }
+
+  Future<Map<String, dynamic>> getTransaction(String digest,
+      [Map<String, dynamic>? options]) {
+    return getTransactionBlock(digest, options);
   }
 
   Future<Map<String, dynamic>> multiGetTransactionBlocks(
     List<String> digests, [
     Map<String, dynamic>? options,
   ]) {
-    return call('sui_multiGetTransactionBlocks', [digests, options ?? const <String, dynamic>{}]);
+    return call('sui_multiGetTransactionBlocks',
+        [digests, options ?? const <String, dynamic>{}]);
   }
 
-  Future<Map<String, dynamic>> getEventsByTransaction(String transactionDigest) {
+  Future<Map<String, dynamic>> getTransactions(
+    List<String> digests, [
+    Map<String, dynamic>? options,
+  ]) {
+    return multiGetTransactionBlocks(digests, options);
+  }
+
+  Future<Map<String, dynamic>> getEventsByTransaction(
+      String transactionDigest) {
     return call('sui_getEvents', [transactionDigest]);
+  }
+
+  Future<Map<String, dynamic>> devInspectTransactionBlock({
+    required String sender,
+    required String txBytesB64,
+    String? gasPrice,
+    String? epoch,
+    Map<String, dynamic>? additionalArgs,
+  }) {
+    return call('sui_devInspectTransactionBlock',
+        [sender, txBytesB64, gasPrice, epoch, additionalArgs]);
   }
 
   Future<Map<String, dynamic>> queryTransactionBlocks({
@@ -443,7 +607,8 @@ class SuiGrpcClient {
     int? limit,
     bool descendingOrder = false,
   }) {
-    return call('suix_queryTransactionBlocks', [query, cursor, limit, descendingOrder]);
+    return call(
+        'suix_queryTransactionBlocks', [query, cursor, limit, descendingOrder]);
   }
 
   Stream<Map<String, dynamic>> iterTransactionBlocks({
@@ -455,8 +620,11 @@ class SuiGrpcClient {
   }) {
     return paginate(
       (c) async {
-        final page =
-            await queryTransactionBlocks(query: query, cursor: c, limit: limit, descendingOrder: descendingOrder);
+        final page = await queryTransactionBlocks(
+            query: query,
+            cursor: c,
+            limit: limit,
+            descendingOrder: descendingOrder);
         final result = page['result'];
         return result is Map<String, dynamic> ? result : page;
       },
@@ -480,7 +648,11 @@ class SuiGrpcClient {
     int? limit,
     bool descendingOrder = false,
   }) {
-    return queryEvents(query: query, cursor: cursor, limit: limit, descendingOrder: descendingOrder);
+    return queryEvents(
+        query: query,
+        cursor: cursor,
+        limit: limit,
+        descendingOrder: descendingOrder);
   }
 
   Stream<Map<String, dynamic>> iterEvents({
@@ -492,7 +664,11 @@ class SuiGrpcClient {
   }) {
     return paginate(
       (c) async {
-        final page = await queryEvents(query: query, cursor: c, limit: limit, descendingOrder: descendingOrder);
+        final page = await queryEvents(
+            query: query,
+            cursor: c,
+            limit: limit,
+            descendingOrder: descendingOrder);
         final result = page['result'];
         return result is Map<String, dynamic> ? result : page;
       },
@@ -521,7 +697,8 @@ class SuiGrpcClient {
   }) {
     return paginate(
       (c) async {
-        final page = await getCheckpoints(cursor: c, limit: limit, descendingOrder: descendingOrder);
+        final page = await getCheckpoints(
+            cursor: c, limit: limit, descendingOrder: descendingOrder);
         final result = page['result'];
         return result is Map<String, dynamic> ? result : page;
       },
@@ -538,8 +715,42 @@ class SuiGrpcClient {
     return call('suix_getLatestSuiSystemState');
   }
 
+  Future<Map<String, dynamic>> getCurrentSystemState() {
+    return getLatestSuiSystemState();
+  }
+
   Future<Map<String, dynamic>> getValidatorsApy() {
     return call('suix_getValidatorsApy');
+  }
+
+  Future<Map<String, dynamic>> getNetworkMetrics() {
+    return call('suix_getNetworkMetrics');
+  }
+
+  Future<Map<String, dynamic>> getAddressMetrics() {
+    return call('suix_getLatestAddressMetrics');
+  }
+
+  Future<Map<String, dynamic>> getEpochMetrics({String? cursor, int? limit}) {
+    return call('suix_getEpochMetrics', [cursor, limit]);
+  }
+
+  Future<Map<String, dynamic>> getAllEpochAddressMetrics(
+      {String? desc, String? cursor, int? limit}) {
+    return call('suix_getAllEpochAddressMetrics', [desc, cursor, limit]);
+  }
+
+  Future<Map<String, dynamic>> getMoveCallMetrics() {
+    return call('suix_getMoveCallMetrics');
+  }
+
+  Future<Map<String, dynamic>> getCurrentEpoch() {
+    return call('suix_getCurrentEpoch');
+  }
+
+  Future<Map<String, dynamic>> getEpochs(
+      {String? cursor, int? limit, bool descendingOrder = false}) {
+    return call('suix_getEpochs', [cursor, limit, descendingOrder]);
   }
 
   Future<Map<String, dynamic>> getCommitteeInfo([String? epoch]) {
@@ -554,6 +765,10 @@ class SuiGrpcClient {
     return call('sui_getChainIdentifier');
   }
 
+  Future<Map<String, dynamic>> getTotalTransactionBlocks() {
+    return call('sui_getTotalTransactionBlocks');
+  }
+
   Future<Map<String, dynamic>> getStakes(String owner) {
     return call('suix_getStakes', [owner]);
   }
@@ -562,22 +777,27 @@ class SuiGrpcClient {
     return call('suix_getStakesByIds', [stakedSuiIds]);
   }
 
-  Future<Map<String, dynamic>> tryGetPastObject(String objectId, int version, [Map<String, dynamic>? options]) {
-    return call('sui_tryGetPastObject', [objectId, version, options ?? const <String, dynamic>{}]);
+  Future<Map<String, dynamic>> tryGetPastObject(String objectId, int version,
+      [Map<String, dynamic>? options]) {
+    return call('sui_tryGetPastObject',
+        [objectId, version, options ?? const <String, dynamic>{}]);
   }
 
   Future<Map<String, dynamic>> tryMultiGetPastObjects(
     List<Map<String, dynamic>> pastObjects, [
     Map<String, dynamic>? options,
   ]) {
-    return call('sui_tryMultiGetPastObjects', [pastObjects, options ?? const <String, dynamic>{}]);
+    return call('sui_tryMultiGetPastObjects',
+        [pastObjects, options ?? const <String, dynamic>{}]);
   }
 
-  Future<Map<String, dynamic>> getNormalizedMoveModulesByPackage(String packageId) {
+  Future<Map<String, dynamic>> getNormalizedMoveModulesByPackage(
+      String packageId) {
     return call('sui_getNormalizedMoveModulesByPackage', [packageId]);
   }
 
-  Future<Map<String, dynamic>> getNormalizedMoveModule(String packageId, String moduleName) {
+  Future<Map<String, dynamic>> getNormalizedMoveModule(
+      String packageId, String moduleName) {
     return call('sui_getNormalizedMoveModule', [packageId, moduleName]);
   }
 
@@ -586,7 +806,8 @@ class SuiGrpcClient {
     String moduleName,
     String functionName,
   ) {
-    return call('sui_getNormalizedMoveFunction', [packageId, moduleName, functionName]);
+    return call(
+        'sui_getNormalizedMoveFunction', [packageId, moduleName, functionName]);
   }
 
   Future<Map<String, dynamic>> getMoveFunctionArgTypes(
@@ -594,7 +815,8 @@ class SuiGrpcClient {
     String moduleName,
     String functionName,
   ) {
-    return call('sui_getMoveFunctionArgTypes', [packageId, moduleName, functionName]);
+    return call(
+        'sui_getMoveFunctionArgTypes', [packageId, moduleName, functionName]);
   }
 
   Future<Map<String, dynamic>> getNormalizedMoveStruct(
@@ -602,7 +824,8 @@ class SuiGrpcClient {
     String moduleName,
     String structName,
   ) {
-    return call('sui_getNormalizedMoveStruct', [packageId, moduleName, structName]);
+    return call(
+        'sui_getNormalizedMoveStruct', [packageId, moduleName, structName]);
   }
 
   Future<Map<String, dynamic>> resolveNameServiceAddress(String name) {
@@ -617,12 +840,121 @@ class SuiGrpcClient {
     return call('suix_resolveNameServiceNames', [address, cursor, limit]);
   }
 
+  Future<Map<String, dynamic>> defaultNameServiceName(String address) {
+    return resolveNameServiceNames(address: address, limit: 1);
+  }
+
   Future<Map<String, dynamic>> executeTransactionBlock(
     String txBytesB64,
     List<String> signatures, {
     Map<String, dynamic>? options,
+    String? requestType,
   }) {
-    return call('sui_executeTransactionBlock', [txBytesB64, signatures, options ?? const <String, dynamic>{}]);
+    return call('sui_executeTransactionBlock', [
+      txBytesB64,
+      signatures,
+      options ?? const <String, dynamic>{},
+      requestType,
+    ]);
+  }
+
+  Future<Map<String, dynamic>> executeTransaction(
+    String txBytesB64,
+    List<String> signatures, {
+    Map<String, dynamic>? options,
+    String? requestType,
+  }) {
+    return executeTransactionBlock(
+      txBytesB64,
+      signatures,
+      options: options,
+      requestType: requestType,
+    );
+  }
+
+  Future<Map<String, dynamic>> simulateTransaction(String txBytesB64) {
+    return dryRunTransactionBlock(txBytesB64);
+  }
+
+  Future<Map<String, dynamic>> signAndExecuteTransaction({
+    required Object transaction,
+    required String sender,
+    required Future<Map<String, dynamic>> Function(Uint8List txBytes)
+        signTransaction,
+    Map<String, dynamic>? options,
+    String? requestType,
+  }) async {
+    final Uint8List txBytes;
+    if (transaction is Uint8List) {
+      txBytes = transaction;
+    } else if (transaction is List<int>) {
+      txBytes = Uint8List.fromList(transaction);
+    } else if (transaction is Transaction) {
+      transaction.setSenderIfNotSet(sender);
+      txBytes = transaction.build();
+    } else {
+      throw ArgumentError.value(transaction, 'transaction',
+          'must be Uint8List, List<int>, or Transaction');
+    }
+
+    final signed = await signTransaction(txBytes);
+    final txB64 = signed['bytes'] as String? ?? base64Encode(txBytes);
+    final sig = signed['signature'];
+    final sigs = signed['signatures'];
+
+    final signatures = sigs is List
+        ? sigs.map((e) => e.toString()).toList()
+        : sig != null
+            ? <String>[sig.toString()]
+            : const <String>[];
+    if (signatures.isEmpty) {
+      throw StateError('signTransaction must return signature or signatures');
+    }
+
+    return executeTransactionBlock(
+      txB64,
+      signatures,
+      options: options,
+      requestType: requestType,
+    );
+  }
+
+  Future<Map<String, dynamic>> verifyZkLoginSignature(
+    Map<String, dynamic> bytes,
+    String signature,
+    String intentScope,
+    String author,
+  ) {
+    return call(
+        'sui_verifyZkLoginSignature', [bytes, signature, intentScope, author]);
+  }
+
+  Future<Map<String, dynamic>> waitForTransaction({
+    required String digest,
+    Map<String, dynamic>? options,
+    Duration timeout = const Duration(seconds: 20),
+    Duration pollInterval = const Duration(seconds: 1),
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    Object? lastError;
+    while (DateTime.now().isBefore(deadline)) {
+      try {
+        final result = await getTransactionBlock(digest, options);
+        if (result.isNotEmpty) {
+          return result;
+        }
+      } catch (err) {
+        lastError = err;
+      }
+      if (DateTime.now().isBefore(deadline)) {
+        await Future<void>.delayed(pollInterval);
+      }
+    }
+    throw TimeoutException(
+      'transaction $digest was not found before timeout'
+      '${lastError != null ? ' (last error: $lastError)' : ''}',
+      timeout,
+    );
   }
 
   Future<List<GrpcResponse>> batch(List<GrpcRequest> requests) {

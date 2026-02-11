@@ -30,11 +30,14 @@ Future<bool> verifyRawSignature({
 }) {
   switch (scheme) {
     case SignatureScheme.ed25519:
-      return verifyRawSignatureEd25519(message: message, signature: signature, publicKey: publicKey);
+      return verifyRawSignatureEd25519(
+          message: message, signature: signature, publicKey: publicKey);
     case SignatureScheme.secp256r1:
-      return verifyRawSignatureSecp256r1(message: message, signature: signature, publicKey: publicKey);
+      return verifyRawSignatureSecp256r1(
+          message: message, signature: signature, publicKey: publicKey);
     case SignatureScheme.secp256k1:
-      throw UnsupportedError('secp256k1 verification is not available in dart:cryptography yet');
+      return verifyRawSignatureSecp256k1(
+          message: message, signature: signature, publicKey: publicKey);
   }
 }
 
@@ -63,13 +66,16 @@ String toSerializedSignature({
     throw StateError('unsupported scheme: $scheme');
   }
   if (signature.length != _signatureSize) {
-    throw ArgumentError.value(signature.length, 'signature.length', 'invalid signature length');
+    throw ArgumentError.value(
+        signature.length, 'signature.length', 'invalid signature length');
   }
   if (publicKey.length != expectedPkLen) {
-    throw ArgumentError.value(publicKey.length, 'publicKey.length', 'invalid public key length for $scheme');
+    throw ArgumentError.value(publicKey.length, 'publicKey.length',
+        'invalid public key length for $scheme');
   }
 
-  final data = Uint8List.fromList(<int>[scheme.index, ...signature, ...publicKey]);
+  final data =
+      Uint8List.fromList(<int>[scheme.index, ...signature, ...publicKey]);
   return base64Encode(data);
 }
 
@@ -91,10 +97,12 @@ ParsedSerializedSignature parseSerializedSignature(String serialized) {
 
   final expectedLen = 1 + _signatureSize + pkSize;
   if (raw.length != expectedLen) {
-    throw StateError('invalid serialized signature length for $scheme: ${raw.length}');
+    throw StateError(
+        'invalid serialized signature length for $scheme: ${raw.length}');
   }
 
   final signature = raw.sublist(1, 1 + _signatureSize);
   final publicKey = raw.sublist(1 + _signatureSize);
-  return ParsedSerializedSignature(scheme: scheme, signature: signature, publicKey: publicKey);
+  return ParsedSerializedSignature(
+      scheme: scheme, signature: signature, publicKey: publicKey);
 }

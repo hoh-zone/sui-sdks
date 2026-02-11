@@ -187,11 +187,13 @@ async fn deepbook_client_quantity_and_whitelist_methods() {
 
     let price_info_age = client
         .get_price_info_object_age("SUI")
+        .await
         .expect("get_price_info_object_age");
     assert!(price_info_age > 0);
 
     let no_price_info_age = client
         .get_price_info_object_age("DEEP")
+        .await
         .expect("get_price_info_object_age for missing");
     assert_eq!(no_price_info_age, -1);
 
@@ -352,6 +354,12 @@ async fn deepbook_client_quantity_and_whitelist_methods() {
         .await
         .expect("get_margin_pool_id");
     assert!(!margin_pool_id.is_empty());
+
+    let deepbook_pool_margin_pool_ids = client
+        .get_deepbook_pool_margin_pool_ids("DEEP_SUI")
+        .await
+        .expect("get_deepbook_pool_margin_pool_ids");
+    assert!(!deepbook_pool_margin_pool_ids.is_empty());
 
     let pool_allowed = client
         .is_deepbook_pool_allowed("SUI", "0x5")

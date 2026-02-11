@@ -1,5 +1,14 @@
 import Foundation
 
+public enum SuiOrder: String, Codable {
+    case ascending
+    case descending
+
+    public var isDescending: Bool {
+        self == .descending
+    }
+}
+
 public enum SuiValidationError: Error, Equatable {
     case invalidSuiAddress
     case invalidSuiObjectID

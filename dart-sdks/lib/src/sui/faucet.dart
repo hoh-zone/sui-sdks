@@ -2,9 +2,11 @@ import 'dart:convert';
 import 'dart:io';
 
 const Map<String, String> defaultFaucetHosts = {
-  'testnet': 'https://faucet.testnet.sui.io/v2/gas',
-  'devnet': 'https://faucet.devnet.sui.io/v2/gas',
+  'testnet': 'https://faucet.testnet.sui.io',
+  'devnet': 'https://faucet.devnet.sui.io',
+  'localnet': 'http://127.0.0.1:9123',
 };
+const String defaultFaucetPathV2 = '/v2/gas';
 
 String getFaucetHost({String network = 'testnet'}) {
   final host = defaultFaucetHosts[network];
@@ -90,7 +92,11 @@ class FaucetClient {
     };
 
     try {
-      return await _transport.post(endpoint, payload, timeout: timeout);
+      final endpointUri = Uri.parse(endpoint);
+      final target = endpointUri.path.endsWith(defaultFaucetPathV2)
+          ? endpointUri.toString()
+          : endpointUri.resolve(defaultFaucetPathV2).toString();
+      return await _transport.post(target, payload, timeout: timeout);
     } catch (e) {
       if (e is FaucetRateLimitError || e.toString().contains('429')) {
         throw FaucetRateLimitError(e.toString());
@@ -98,4 +104,22 @@ class FaucetClient {
       rethrow;
     }
   }
+}
+
+Future<Map<String, dynamic>> requestSuiFromFaucetV2({
+  required String host,
+  required String recipient,
+  int? fixedAmount,
+  Duration timeout = const Duration(seconds: 30),
+  FaucetTransport? transport,
+}) {
+  final client = FaucetClient(
+    endpoint: host,
+    timeout: timeout,
+    transport: transport,
+  );
+  return client.requestSuiFromFaucetV2(
+    recipient,
+    fixedAmount: fixedAmount,
+  );
 }

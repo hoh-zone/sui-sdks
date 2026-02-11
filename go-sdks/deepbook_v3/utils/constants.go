@@ -95,8 +95,43 @@ var MainnetPools = PoolMap{
 	},
 }
 
-var TestnetMarginPools = MarginPoolMap{}
-var MainnetMarginPools = MarginPoolMap{}
+var TestnetMarginPools = MarginPoolMap{
+	"SUI": {
+		Address: "0xcdbbe6a72e639b647296788e2e4b1cac5cea4246028ba388ba1332ff9a382eea",
+		Type:    "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
+	},
+	"DBUSDC": {
+		Address: "0xf08568da93834e1ee04f09902ac7b1e78d3fdf113ab4d2106c7265e95318b14d",
+		Type:    "0xf7152c05930480cd740d7311b5b8b45c6f488e3a53a11c3f74a6fac36a52e0d7::DBUSDC::DBUSDC",
+	},
+	"DEEP": {
+		Address: "0x610640613f21d9e688d6f8103d17df22315c32e0c80590ce64951a1991378b55",
+		Type:    "0x36dbef866a1d62bf7328989a10fb2f07d769f4ee587c0de4a0a256e57e0a58a8::deep::DEEP",
+	},
+	"DBTC": {
+		Address: "0xf3440b4aafcc8b12fc4b242e9590c52873b8238a0d0e52fbf9dae61d2970796a",
+		Type:    "0x6502dae813dbe5e42643c119a6450a518481f03063febc7e20238e43b6ea9e86::dbtc::DBTC",
+	},
+}
+
+var MainnetMarginPools = MarginPoolMap{
+	"SUI": {
+		Address: "0x53041c6f86c4782aabbfc1d4fe234a6d37160310c7ee740c915f0a01b7127344",
+		Type:    "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
+	},
+	"USDC": {
+		Address: "0xba473d9ae278f10af75c50a8fa341e9c6a1c087dc91a3f23e8048baf67d0754f",
+		Type:    "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
+	},
+	"DEEP": {
+		Address: "0x1d723c5cd113296868b55208f2ab5a905184950dd59c48eb7345607d6b5e6af7",
+		Type:    "0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP",
+	},
+	"WAL": {
+		Address: "0x38decd3dbb62bd4723144349bf57bc403b393aee86a51596846a824a1e0c2c01",
+		Type:    "0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL",
+	},
+}
 
 var TestnetPythConfigs = map[string]string{}
 var MainnetPythConfigs = map[string]string{}

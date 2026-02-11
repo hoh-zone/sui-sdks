@@ -14,6 +14,10 @@ public extension SuiClient {
         try await getRPCAPIVersion()
     }
 
+    func getRpcApiVersionTyped() async throws -> String? {
+        try await getRpcApiVersion()
+    }
+
     func getObjectTyped(objectID: String, options: [String: Any] = [:]) async throws -> SuiObjectResponse {
         let raw = try await getObject(objectID: objectID, options: options)
         return try decodeJSON(raw, as: SuiObjectResponse.self)
@@ -116,6 +120,11 @@ public extension SuiClient {
         return try decodeJSON(raw, as: [SuiJSONObject].self)
     }
 
+    func getEventsTyped(transactionDigest: String) async throws -> [SuiJSONObject] {
+        let raw = try await getEvents(transactionDigest: transactionDigest)
+        return try decodeJSON(raw, as: [SuiJSONObject].self)
+    }
+
     func queryEventsTyped(
         query: [String: Any],
         cursor: String? = nil,
@@ -123,6 +132,16 @@ public extension SuiClient {
         descendingOrder: Bool = false
     ) async throws -> SuiEventPage {
         let raw = try await queryEvents(query: query, cursor: cursor, limit: limit, descendingOrder: descendingOrder)
+        return try decodeJSON(raw, as: SuiEventPage.self)
+    }
+
+    func queryEventsTyped(
+        query: [String: Any],
+        cursor: String? = nil,
+        limit: Int? = nil,
+        order: SuiOrder
+    ) async throws -> SuiEventPage {
+        let raw = try await queryEvents(query: query, cursor: cursor, limit: limit, order: order)
         return try decodeJSON(raw, as: SuiEventPage.self)
     }
 
@@ -143,6 +162,23 @@ public extension SuiClient {
         return try decodeJSON(rawItems, as: [SuiJSONObject].self)
     }
 
+    func allEventsTyped(
+        query: [String: Any],
+        cursor: String? = nil,
+        limit: Int = 100,
+        order: SuiOrder,
+        maxItems: Int? = nil
+    ) async throws -> [SuiJSONObject] {
+        let rawItems = try await allEvents(
+            query: query,
+            cursor: cursor,
+            limit: limit,
+            order: order,
+            maxItems: maxItems
+        )
+        return try decodeJSON(rawItems, as: [SuiJSONObject].self)
+    }
+
     func queryTransactionBlocksTyped(
         query: [String: Any],
         cursor: String? = nil,
@@ -150,6 +186,16 @@ public extension SuiClient {
         descendingOrder: Bool = false
     ) async throws -> SuiTransactionBlockPage {
         let raw = try await queryTransactionBlocks(query: query, cursor: cursor, limit: limit, descendingOrder: descendingOrder)
+        return try decodeJSON(raw, as: SuiTransactionBlockPage.self)
+    }
+
+    func queryTransactionBlocksTyped(
+        query: [String: Any],
+        cursor: String? = nil,
+        limit: Int? = nil,
+        order: SuiOrder
+    ) async throws -> SuiTransactionBlockPage {
+        let raw = try await queryTransactionBlocks(query: query, cursor: cursor, limit: limit, order: order)
         return try decodeJSON(raw, as: SuiTransactionBlockPage.self)
     }
 
@@ -165,6 +211,23 @@ public extension SuiClient {
             cursor: cursor,
             limit: limit,
             descendingOrder: descendingOrder,
+            maxItems: maxItems
+        )
+        return try decodeJSON(rawItems, as: [SuiJSONObject].self)
+    }
+
+    func allTransactionBlocksTyped(
+        query: [String: Any],
+        cursor: String? = nil,
+        limit: Int = 100,
+        order: SuiOrder,
+        maxItems: Int? = nil
+    ) async throws -> [SuiJSONObject] {
+        let rawItems = try await allTransactionBlocks(
+            query: query,
+            cursor: cursor,
+            limit: limit,
+            order: order,
             maxItems: maxItems
         )
         return try decodeJSON(rawItems, as: [SuiJSONObject].self)
@@ -222,6 +285,51 @@ public extension SuiClient {
         return try decodeJSON(raw, as: SuiJSONObject.self)
     }
 
+    func executeTransactionBlockTyped(
+        transactionBlockBytes: [UInt8],
+        signature: String,
+        options: [String: Any] = [:],
+        requestType: String? = nil
+    ) async throws -> SuiJSONObject {
+        let raw = try await executeTransactionBlock(
+            transactionBlockBytes: transactionBlockBytes,
+            signature: signature,
+            options: options,
+            requestType: requestType
+        )
+        return try decodeJSON(raw, as: SuiJSONObject.self)
+    }
+
+    func executeTransactionBlockTyped(
+        transactionBlockData: Data,
+        signatures: [String],
+        options: [String: Any] = [:],
+        requestType: String? = nil
+    ) async throws -> SuiJSONObject {
+        let raw = try await executeTransactionBlock(
+            transactionBlockData: transactionBlockData,
+            signatures: signatures,
+            options: options,
+            requestType: requestType
+        )
+        return try decodeJSON(raw, as: SuiJSONObject.self)
+    }
+
+    func executeTransactionBlockTyped(
+        transactionBlockData: Data,
+        signature: String,
+        options: [String: Any] = [:],
+        requestType: String? = nil
+    ) async throws -> SuiJSONObject {
+        let raw = try await executeTransactionBlock(
+            transactionBlockData: transactionBlockData,
+            signature: signature,
+            options: options,
+            requestType: requestType
+        )
+        return try decodeJSON(raw, as: SuiJSONObject.self)
+    }
+
     func signAndExecuteTransactionTyped(
         transactionBlockBytes: [UInt8],
         signer: SuiSigner,
@@ -264,6 +372,27 @@ public extension SuiClient {
         return try decodeJSON(raw, as: SuiJSONObject.self)
     }
 
+    func signAndExecuteTransactionTyped(
+        transactionBlockData: Data,
+        signer: SuiSigner,
+        options: [String: Any] = [:],
+        requestType: String? = nil,
+        waitForConfirmation: Bool = false,
+        waitTimeoutMs: Int = 60_000,
+        waitPollIntervalMs: Int = 2_000
+    ) async throws -> SuiJSONObject {
+        let raw = try await signAndExecuteTransaction(
+            transactionBlockData: transactionBlockData,
+            signer: signer,
+            options: options,
+            requestType: requestType,
+            waitForConfirmation: waitForConfirmation,
+            waitTimeoutMs: waitTimeoutMs,
+            waitPollIntervalMs: waitPollIntervalMs
+        )
+        return try decodeJSON(raw, as: SuiJSONObject.self)
+    }
+
     func getCheckpointRawTyped(checkpointID: String) async throws -> SuiJSONObject {
         let raw = try await getCheckpoint(checkpointID: checkpointID)
         return try decodeJSON(raw, as: SuiJSONObject.self)
@@ -282,6 +411,15 @@ public extension SuiClient {
         return try decodeJSON(raw, as: SuiEpochMetricsPage.self)
     }
 
+    func getEpochMetricsTyped(
+        cursor: String? = nil,
+        limit: Int? = nil,
+        order: SuiOrder
+    ) async throws -> SuiEpochMetricsPage {
+        let raw = try await getEpochMetrics(cursor: cursor, limit: limit, order: order)
+        return try decodeJSON(raw, as: SuiEpochMetricsPage.self)
+    }
+
     func allEpochMetricsTyped(
         cursor: String? = nil,
         limit: Int = 100,
@@ -289,6 +427,16 @@ public extension SuiClient {
         maxItems: Int? = nil
     ) async throws -> [SuiJSONObject] {
         let rawItems = try await allEpochMetrics(cursor: cursor, limit: limit, descendingOrder: descendingOrder, maxItems: maxItems)
+        return try decodeJSON(rawItems, as: [SuiJSONObject].self)
+    }
+
+    func allEpochMetricsTyped(
+        cursor: String? = nil,
+        limit: Int = 100,
+        order: SuiOrder,
+        maxItems: Int? = nil
+    ) async throws -> [SuiJSONObject] {
+        let rawItems = try await allEpochMetrics(cursor: cursor, limit: limit, order: order, maxItems: maxItems)
         return try decodeJSON(rawItems, as: [SuiJSONObject].self)
     }
 
@@ -362,6 +510,11 @@ public extension SuiClient {
         return try decodeJSON(raw, as: [SuiJSONObject].self)
     }
 
+    func getStakesByIdsTyped(stakedSuiIDs: [String]) async throws -> [SuiJSONObject] {
+        let raw = try await getStakesByIds(stakedSuiIDs: stakedSuiIDs)
+        return try decodeJSON(raw, as: [SuiJSONObject].self)
+    }
+
     func getProtocolConfigTyped(version: String? = nil) async throws -> SuiJSONObject {
         let raw = try await getProtocolConfig(version: version)
         return try decodeJSON(raw, as: SuiJSONObject.self)
@@ -416,8 +569,33 @@ public extension SuiClient {
         return try decodeJSON(raw, as: SuiJSONObject.self)
     }
 
+    func devInspectTransactionBlockTyped(
+        sender: String,
+        transactionBlockData: Data,
+        gasPrice: String? = nil,
+        epoch: String? = nil
+    ) async throws -> SuiJSONObject {
+        let raw = try await devInspectTransactionBlock(
+            sender: sender,
+            transactionBlockData: transactionBlockData,
+            gasPrice: gasPrice,
+            epoch: epoch
+        )
+        return try decodeJSON(raw, as: SuiJSONObject.self)
+    }
+
     func dryRunTransactionBlockTyped(txBytesBase64: String) async throws -> SuiJSONObject {
         let raw = try await dryRunTransactionBlock(txBytesBase64: txBytesBase64)
+        return try decodeJSON(raw, as: SuiJSONObject.self)
+    }
+
+    func dryRunTransactionBlockTyped(transactionBlockBytes: [UInt8]) async throws -> SuiJSONObject {
+        let raw = try await dryRunTransactionBlock(transactionBlockBytes: transactionBlockBytes)
+        return try decodeJSON(raw, as: SuiJSONObject.self)
+    }
+
+    func dryRunTransactionBlockTyped(transactionBlockData: Data) async throws -> SuiJSONObject {
+        let raw = try await dryRunTransactionBlock(transactionBlockData: transactionBlockData)
         return try decodeJSON(raw, as: SuiJSONObject.self)
     }
 
@@ -484,6 +662,11 @@ public extension SuiClient {
         return try decodeJSON(raw, as: SuiCheckpointPage.self)
     }
 
+    func getCheckpointsTyped(cursor: String? = nil, limit: Int? = nil, order: SuiOrder) async throws -> SuiCheckpointPage {
+        let raw = try await getCheckpoints(cursor: cursor, limit: limit, order: order)
+        return try decodeJSON(raw, as: SuiCheckpointPage.self)
+    }
+
     func allCheckpointsTyped(
         cursor: String? = nil,
         limit: Int = 100,
@@ -494,6 +677,21 @@ public extension SuiClient {
             cursor: cursor,
             limit: limit,
             descendingOrder: descendingOrder,
+            maxItems: maxItems
+        )
+        return try decodeJSON(rawItems, as: [SuiCheckpointSummary].self)
+    }
+
+    func allCheckpointsTyped(
+        cursor: String? = nil,
+        limit: Int = 100,
+        order: SuiOrder,
+        maxItems: Int? = nil
+    ) async throws -> [SuiCheckpointSummary] {
+        let rawItems = try await allCheckpoints(
+            cursor: cursor,
+            limit: limit,
+            order: order,
             maxItems: maxItems
         )
         return try decodeJSON(rawItems, as: [SuiCheckpointSummary].self)
@@ -523,6 +721,15 @@ public extension SuiClient {
         return try decodeJSON(raw, as: SuiEpochPage.self)
     }
 
+    func getEpochsTyped(
+        cursor: String? = nil,
+        limit: Int? = nil,
+        order: SuiOrder
+    ) async throws -> SuiEpochPage {
+        let raw = try await getEpochs(cursor: cursor, limit: limit, order: order)
+        return try decodeJSON(raw, as: SuiEpochPage.self)
+    }
+
     func allEpochsTyped(
         cursor: String? = nil,
         limit: Int = 100,
@@ -530,6 +737,16 @@ public extension SuiClient {
         maxItems: Int? = nil
     ) async throws -> [SuiEpochSummary] {
         let rawItems = try await allEpochs(cursor: cursor, limit: limit, descendingOrder: descendingOrder, maxItems: maxItems)
+        return try decodeJSON(rawItems, as: [SuiEpochSummary].self)
+    }
+
+    func allEpochsTyped(
+        cursor: String? = nil,
+        limit: Int = 100,
+        order: SuiOrder,
+        maxItems: Int? = nil
+    ) async throws -> [SuiEpochSummary] {
+        let rawItems = try await allEpochs(cursor: cursor, limit: limit, order: order, maxItems: maxItems)
         return try decodeJSON(rawItems, as: [SuiEpochSummary].self)
     }
 }

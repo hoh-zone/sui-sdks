@@ -17,17 +17,20 @@ Implemented foundations:
 - `Sui JSON-RPC`
   - Network mapping: `mainnet/testnet/devnet/localnet`
   - Sui type helpers: address/object id normalization + validation, transaction digest validation
+  - `SuiOrder` enum (`ascending` / `descending`) for order-aware RPC overloads
   - HTTP JSON-RPC transport based on `URLSession`
   - Error modeling for HTTP status, JSON-RPC server error, malformed response
   - `SuiClient` base methods:
     - `call`
     - `discoverRPCAPI`
     - `getRPCAPIVersion`
+    - `getRpcApiVersion` (alias)
     - `getObject`
     - `getObjects`
     - `multiGetObjects`
     - `dryRunTransactionBlock`
-    - `devInspectTransactionBlock`
+    - `dryRunTransactionBlock` (bytes/data overloads)
+    - `devInspectTransactionBlock` (string/bytes/data overloads)
     - `getCoins`
     - `getAllCoins`
     - `getBalance`
@@ -44,6 +47,7 @@ Implemented foundations:
     - `getDynamicFieldObject`
     - `queryEvents`
     - `getEventsByTransaction`
+    - `getEvents` (alias)
     - `queryTransactionBlocks`
     - `getCheckpoints`
     - `getCheckpoint`
@@ -51,10 +55,8 @@ Implemented foundations:
     - `getTransactionBlock`
     - `multiGetTransactionBlocks`
     - `tryGetPastObject`
-    - `executeTransactionBlock`
-    - `executeTransactionBlock` (bytes overload)
-    - `signAndExecuteTransaction` (supports optional confirmation wait)
-    - `signAndExecuteTransaction` (base64 overload)
+    - `executeTransactionBlock` (string/bytes/data overloads, single or multi-signature)
+    - `signAndExecuteTransaction` (base64/bytes/data overloads, supports optional confirmation wait)
     - `getLatestSuiSystemState`
     - `getTotalTransactionBlocks`
     - `getCommitteeInfo`
@@ -67,6 +69,7 @@ Implemented foundations:
     - `getCurrentEpoch`
     - `getStakes`
     - `getStakesByIDs`
+    - `getStakesByIds` (alias)
     - `getValidatorsApy`
     - `getChainIdentifier`
     - `resolveNameServiceAddress`
@@ -77,6 +80,12 @@ Implemented foundations:
     - `waitForTransaction`
     - `getPackage`
     - `getReferenceGasPrice`
+    - order overloads:
+      - `queryEvents(order:)`
+      - `queryTransactionBlocks(order:)`
+      - `getCheckpoints(order:)`
+      - `getEpochMetrics(order:)`
+      - `getEpochs(order:)`
   - Pagination helper + aggregated fetch:
     - `allCoins`
     - `allOwnedObjects`
@@ -86,6 +95,12 @@ Implemented foundations:
     - `allCheckpoints`
     - `allEpochMetrics`
     - `allEpochs`
+    - order overloads:
+      - `allEvents(order:)`
+      - `allTransactionBlocks(order:)`
+      - `allCheckpoints(order:)`
+      - `allEpochMetrics(order:)`
+      - `allEpochs(order:)`
   - Typed API (beta, additive):
     - object/object-page methods:
       - `getObjectTyped` / `getObjectsTyped` / `multiGetObjectsTyped`
@@ -105,10 +120,12 @@ Implemented foundations:
     - dynamic/event/tx methods:
       - `getDynamicFieldsTyped` / `allDynamicFieldsTyped`
       - `getEventsByTransactionTyped`
+      - `getEventsTyped` (alias)
       - `queryEventsTyped` / `allEventsTyped`
       - `queryTransactionBlocksTyped` / `allTransactionBlocksTyped`
       - `getTransactionBlockTyped` / `multiGetTransactionBlocksTyped`
       - `executeTransactionBlockTyped`
+      - `executeTransactionBlockTyped` (single or multi-signature)
       - `signAndExecuteTransactionTyped`
       - `waitForTransactionTyped`
       - `getCheckpointRawTyped`
@@ -117,6 +134,14 @@ Implemented foundations:
     - epoch/system methods:
       - `getEpochMetricsTyped` / `allEpochMetricsTyped`
       - `getEpochsTyped` / `allEpochsTyped`
+    - order overloads:
+      - `queryEventsTyped(order:)`
+      - `allEventsTyped(order:)`
+      - `queryTransactionBlocksTyped(order:)`
+      - `allTransactionBlocksTyped(order:)`
+      - `getCheckpointsTyped(order:)` / `allCheckpointsTyped(order:)`
+      - `getEpochMetricsTyped(order:)` / `allEpochMetricsTyped(order:)`
+      - `getEpochsTyped(order:)` / `allEpochsTyped(order:)`
       - `getLatestSuiSystemStateTyped`
       - `getCommitteeInfoTyped`
       - `getNetworkMetricsTyped` / `getAddressMetricsTyped`
@@ -124,14 +149,16 @@ Implemented foundations:
       - `getMoveCallMetricsTyped` / `getCurrentEpochTyped`
       - `getValidatorsApyTyped`
       - `getStakesTyped` / `getStakesByIDsTyped`
+      - `getStakesByIdsTyped` (alias)
       - `getProtocolConfigTyped`
       - `verifyZkLoginSignatureTyped`
     - tx simulation methods:
-      - `dryRunTransactionBlockTyped`
-      - `devInspectTransactionBlockTyped`
+      - `dryRunTransactionBlockTyped` (string/bytes/data overloads)
+      - `devInspectTransactionBlockTyped` (string/bytes/data overloads)
     - misc:
       - `discoverRPCAPITyped`
       - `getRPCAPIVersionTyped`
+      - `getRpcApiVersionTyped` (alias)
       - `getLatestCheckpointSequenceNumberTyped`
       - `getChainIdentifierTyped`
       - `resolveNameServiceAddressTyped`

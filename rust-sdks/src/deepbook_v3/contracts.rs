@@ -29,6 +29,22 @@ impl<'a> BalanceManagerContract<'a> {
         ))
     }
 
+    pub fn new_with_custom_owner(
+        &self,
+        tx: &mut Transaction,
+        owner_address: &str,
+    ) -> Result<serde_json::Value, ContractError> {
+        let owner_obj = tx.object(owner_address.to_string());
+        Ok(tx.move_call(
+            &format!(
+                "{}::balance_manager::new_with_custom_owner",
+                self.config.package_ids.deepbook_package_id
+            ),
+            vec![owner_obj],
+            vec![],
+        ))
+    }
+
     pub fn deposit(
         &self,
         tx: &mut Transaction,
@@ -271,6 +287,42 @@ impl<'a> BalanceManagerContract<'a> {
         }
     }
 
+    pub fn generate_proof_as_owner(
+        &self,
+        tx: &mut Transaction,
+        manager_key: &str,
+    ) -> Result<serde_json::Value, ContractError> {
+        let manager = self.config.get_balance_manager(manager_key)?;
+        let manager_obj = tx.object(manager.address.clone());
+        Ok(tx.move_call(
+            &format!(
+                "{}::balance_manager::generate_proof_as_owner",
+                self.config.package_ids.deepbook_package_id
+            ),
+            vec![manager_obj],
+            vec![],
+        ))
+    }
+
+    pub fn generate_proof_as_trader(
+        &self,
+        tx: &mut Transaction,
+        manager_key: &str,
+        trade_cap_id: &str,
+    ) -> Result<serde_json::Value, ContractError> {
+        let manager = self.config.get_balance_manager(manager_key)?;
+        let manager_obj = tx.object(manager.address.clone());
+        let trade_cap_obj = tx.object(trade_cap_id.to_string());
+        Ok(tx.move_call(
+            &format!(
+                "{}::balance_manager::generate_proof_as_trader",
+                self.config.package_ids.deepbook_package_id
+            ),
+            vec![manager_obj, trade_cap_obj],
+            vec![],
+        ))
+    }
+
     pub fn balance_manager_referral_owner(
         &self,
         tx: &mut Transaction,
@@ -360,6 +412,25 @@ impl<'a> BalanceManagerContract<'a> {
                 self.config.package_ids.deepbook_package_id
             ),
             vec![manager_obj, pool_obj, proof],
+            vec![],
+        ))
+    }
+
+    pub fn revoke_trade_cap(
+        &self,
+        tx: &mut Transaction,
+        manager_key: &str,
+        trade_cap_id: &str,
+    ) -> Result<serde_json::Value, ContractError> {
+        let manager = self.config.get_balance_manager(manager_key)?;
+        let manager_obj = tx.object(manager.address.clone());
+        let trade_cap_obj = tx.object(trade_cap_id.to_string());
+        Ok(tx.move_call(
+            &format!(
+                "{}::balance_manager::revoke_trade_cap",
+                self.config.package_ids.deepbook_package_id
+            ),
+            vec![manager_obj, trade_cap_obj],
             vec![],
         ))
     }
@@ -1457,6 +1528,15 @@ impl<'a> DeepBookContract<'a> {
         ))
     }
 
+    pub fn get_pool_id_by_asset(
+        &self,
+        tx: &mut Transaction,
+        base_type: &str,
+        quote_type: &str,
+    ) -> Result<serde_json::Value, ContractError> {
+        self.get_pool_id_by_assets(tx, base_type, quote_type)
+    }
+
     pub fn pool_trade_params(
         &self,
         tx: &mut Transaction,
@@ -1531,6 +1611,14 @@ impl<'a> DeepBookContract<'a> {
             vec![pool_obj],
             vec![base.type_tag.clone(), quote.type_tag.clone()],
         ))
+    }
+
+    pub fn get_order_deep_price(
+        &self,
+        tx: &mut Transaction,
+        pool_key: &str,
+    ) -> Result<serde_json::Value, ContractError> {
+        self.get_pool_deep_price(tx, pool_key)
     }
 
     pub fn get_account_order_details(
@@ -2038,6 +2126,51 @@ impl<'a> MarginTPSLContract<'a> {
         ))
     }
 
+    pub fn add_conditional_order(
+        &self,
+        tx: &mut Transaction,
+        margin_manager_key: &str,
+        conditional_order_id: u64,
+        condition: serde_json::Value,
+        pending_order: serde_json::Value,
+    ) -> Result<serde_json::Value, ContractError> {
+        let manager = self.config.get_margin_manager(margin_manager_key)?;
+        let pool = self.config.get_pool(&manager.pool_key)?;
+        let base = self.config.get_coin(&pool.base_coin)?;
+        let quote = self.config.get_coin(&pool.quote_coin)?;
+        let manager_obj = tx.object(manager.address.clone());
+        let pool_obj = tx.object(pool.address.clone());
+        let base_price_obj = tx.object(
+            base.price_info_object_id
+                .clone()
+                .unwrap_or_else(|| "0x0".to_string()),
+        );
+        let quote_price_obj = tx.object(
+            quote
+                .price_info_object_id
+                .clone()
+                .unwrap_or_else(|| "0x0".to_string()),
+        );
+        let registry_obj = tx.object(self.config.package_ids.margin_registry_id.clone());
+        let conditional_id_arg = tx.pure_bytes(&encode_u64(conditional_order_id));
+        let clock_obj = tx.object("0x6");
+        Ok(tx.move_call(
+            &self.margin_manager_target("add_conditional_order"),
+            vec![
+                manager_obj,
+                pool_obj,
+                base_price_obj,
+                quote_price_obj,
+                registry_obj,
+                conditional_id_arg,
+                condition,
+                pending_order,
+                clock_obj,
+            ],
+            vec![base.type_tag.clone(), quote.type_tag.clone()],
+        ))
+    }
+
     pub fn cancel_all_conditional_orders(
         &self,
         tx: &mut Transaction,
@@ -2151,6 +2284,35 @@ impl<'a> MarginRegistryContract<'a> {
         Ok(tx.move_call(
             &self.margin_registry_target("get_margin_manager_ids"),
             vec![registry_obj, owner_arg],
+            vec![],
+        ))
+    }
+
+    pub fn get_margin_pool_id(
+        &self,
+        tx: &mut Transaction,
+        coin_key: &str,
+    ) -> Result<serde_json::Value, ContractError> {
+        let coin = self.config.get_coin(coin_key)?;
+        let registry_obj = tx.object(self.config.package_ids.margin_registry_id.clone());
+        Ok(tx.move_call(
+            &self.margin_registry_target("get_margin_pool_id"),
+            vec![registry_obj],
+            vec![coin.type_tag.clone()],
+        ))
+    }
+
+    pub fn get_deepbook_pool_margin_pool_ids(
+        &self,
+        tx: &mut Transaction,
+        pool_key: &str,
+    ) -> Result<serde_json::Value, ContractError> {
+        let pool = self.config.get_pool(pool_key)?;
+        let registry_obj = tx.object(self.config.package_ids.margin_registry_id.clone());
+        let pool_obj = tx.object(pool.address.clone());
+        Ok(tx.move_call(
+            &self.margin_registry_target("get_deepbook_pool_margin_pool_ids"),
+            vec![registry_obj, pool_obj],
             vec![],
         ))
     }
@@ -2322,6 +2484,35 @@ impl<'a> MarginPoolContract<'a> {
         Ok(tx.move_call(
             &self.margin_pool_target("mint_supply_referral"),
             vec![pool_obj, registry_obj, clock_obj],
+            vec![margin_pool.type_tag.clone()],
+        ))
+    }
+
+    pub fn supply(
+        &self,
+        tx: &mut Transaction,
+        coin_key: &str,
+        supplier_cap_id: &str,
+        supply_coin_object_id: &str,
+        referral_id: Option<&str>,
+    ) -> Result<serde_json::Value, ContractError> {
+        let margin_pool = self.config.get_margin_pool(coin_key)?;
+        let pool_obj = tx.object(margin_pool.address.clone());
+        let registry_obj = tx.object(self.config.package_ids.margin_registry_id.clone());
+        let supplier_cap_obj = tx.object(supplier_cap_id.to_string());
+        let supply_coin_obj = tx.object(supply_coin_object_id.to_string());
+        let referral_obj = tx.object(referral_id.unwrap_or("0x0").to_string());
+        let clock_obj = tx.object("0x6");
+        Ok(tx.move_call(
+            &self.margin_pool_target("supply"),
+            vec![
+                pool_obj,
+                registry_obj,
+                supplier_cap_obj,
+                supply_coin_obj,
+                referral_obj,
+                clock_obj,
+            ],
             vec![margin_pool.type_tag.clone()],
         ))
     }
@@ -3230,6 +3421,15 @@ impl<'a> FlashLoanContract<'a> {
         ))
     }
 
+    pub fn borrow_flashloan_base(
+        &self,
+        tx: &mut Transaction,
+        pool_key: &str,
+        borrow_amount: f64,
+    ) -> Result<serde_json::Value, ContractError> {
+        self.borrow_base_asset(tx, pool_key, borrow_amount)
+    }
+
     pub fn return_base_asset(
         &self,
         tx: &mut Transaction,
@@ -3246,6 +3446,16 @@ impl<'a> FlashLoanContract<'a> {
             vec![pool_obj, base_coin_obj, flashloan_obj],
             vec![base.type_tag.clone(), quote.type_tag.clone()],
         ))
+    }
+
+    pub fn return_flashloan_base(
+        &self,
+        tx: &mut Transaction,
+        pool_key: &str,
+        base_coin_object_id: &str,
+        flashloan_object_id: &str,
+    ) -> Result<serde_json::Value, ContractError> {
+        self.return_base_asset(tx, pool_key, base_coin_object_id, flashloan_object_id)
     }
 
     pub fn borrow_quote_asset(
@@ -3265,6 +3475,15 @@ impl<'a> FlashLoanContract<'a> {
         ))
     }
 
+    pub fn borrow_flashloan_quote(
+        &self,
+        tx: &mut Transaction,
+        pool_key: &str,
+        borrow_amount: f64,
+    ) -> Result<serde_json::Value, ContractError> {
+        self.borrow_quote_asset(tx, pool_key, borrow_amount)
+    }
+
     pub fn return_quote_asset(
         &self,
         tx: &mut Transaction,
@@ -3281,6 +3500,16 @@ impl<'a> FlashLoanContract<'a> {
             vec![pool_obj, quote_coin_obj, flashloan_obj],
             vec![base.type_tag.clone(), quote.type_tag.clone()],
         ))
+    }
+
+    pub fn return_flashloan_quote(
+        &self,
+        tx: &mut Transaction,
+        pool_key: &str,
+        quote_coin_object_id: &str,
+        flashloan_object_id: &str,
+    ) -> Result<serde_json::Value, ContractError> {
+        self.return_quote_asset(tx, pool_key, quote_coin_object_id, flashloan_object_id)
     }
 }
 
@@ -3531,6 +3760,61 @@ impl<'a> MarginManagerContract<'a> {
         let base = self.config.get_coin(&pool.base_coin)?;
         let quote = self.config.get_coin(&pool.quote_coin)?;
         Ok((manager, pool, base, quote))
+    }
+
+    pub fn new(
+        &self,
+        tx: &mut Transaction,
+        pool_key: &str,
+    ) -> Result<serde_json::Value, ContractError> {
+        let pool = self.config.get_pool(pool_key)?;
+        let base = self.config.get_coin(&pool.base_coin)?;
+        let quote = self.config.get_coin(&pool.quote_coin)?;
+        let pool_obj = tx.object(pool.address.clone());
+        let registry_obj = tx.object(self.config.package_ids.registry_id.clone());
+        let margin_registry_obj = tx.object(self.config.package_ids.margin_registry_id.clone());
+        let clock_obj = tx.object("0x6");
+        Ok(tx.move_call(
+            &self.margin_manager_target("new"),
+            vec![pool_obj, registry_obj, margin_registry_obj, clock_obj],
+            vec![base.type_tag.clone(), quote.type_tag.clone()],
+        ))
+    }
+
+    pub fn new_with_initializer(
+        &self,
+        tx: &mut Transaction,
+        pool_key: &str,
+    ) -> Result<serde_json::Value, ContractError> {
+        let pool = self.config.get_pool(pool_key)?;
+        let base = self.config.get_coin(&pool.base_coin)?;
+        let quote = self.config.get_coin(&pool.quote_coin)?;
+        let pool_obj = tx.object(pool.address.clone());
+        let registry_obj = tx.object(self.config.package_ids.registry_id.clone());
+        let margin_registry_obj = tx.object(self.config.package_ids.margin_registry_id.clone());
+        let clock_obj = tx.object("0x6");
+        Ok(tx.move_call(
+            &self.margin_manager_target("new_with_initializer"),
+            vec![pool_obj, registry_obj, margin_registry_obj, clock_obj],
+            vec![base.type_tag.clone(), quote.type_tag.clone()],
+        ))
+    }
+
+    pub fn share(
+        &self,
+        tx: &mut Transaction,
+        manager_key: &str,
+        manager_object_id: &str,
+        initializer_object_id: &str,
+    ) -> Result<serde_json::Value, ContractError> {
+        let (_manager, _pool, base, quote) = self.manager_types(manager_key)?;
+        let manager_obj = tx.object(manager_object_id.to_string());
+        let initializer_obj = tx.object(initializer_object_id.to_string());
+        Ok(tx.move_call(
+            &self.margin_manager_target("share"),
+            vec![manager_obj, initializer_obj],
+            vec![base.type_tag.clone(), quote.type_tag.clone()],
+        ))
     }
 
     pub fn owner(
@@ -3904,6 +4188,57 @@ impl<'a> MarginManagerContract<'a> {
         ))
     }
 
+    pub fn liquidate(
+        &self,
+        tx: &mut Transaction,
+        manager_address: &str,
+        pool_key: &str,
+        debt_is_base: bool,
+        repay_coin_object_id: &str,
+    ) -> Result<serde_json::Value, ContractError> {
+        let pool = self.config.get_pool(pool_key)?;
+        let base = self.config.get_coin(&pool.base_coin)?;
+        let quote = self.config.get_coin(&pool.quote_coin)?;
+        let base_margin_pool = self.config.get_margin_pool(&pool.base_coin)?;
+        let quote_margin_pool = self.config.get_margin_pool(&pool.quote_coin)?;
+        let margin_pool = if debt_is_base {
+            base_margin_pool
+        } else {
+            quote_margin_pool
+        };
+        let manager_obj = tx.object(manager_address.to_string());
+        let registry_obj = tx.object(self.config.package_ids.margin_registry_id.clone());
+        let base_price_obj = tx.object(
+            base.price_info_object_id
+                .clone()
+                .unwrap_or_else(|| "0x0".to_string()),
+        );
+        let quote_price_obj = tx.object(
+            quote
+                .price_info_object_id
+                .clone()
+                .unwrap_or_else(|| "0x0".to_string()),
+        );
+        let margin_pool_obj = tx.object(margin_pool.address.clone());
+        let pool_obj = tx.object(pool.address.clone());
+        let repay_coin_obj = tx.object(repay_coin_object_id.to_string());
+        let clock_obj = tx.object("0x6");
+        Ok(tx.move_call(
+            &self.margin_manager_target("liquidate"),
+            vec![
+                manager_obj,
+                registry_obj,
+                base_price_obj,
+                quote_price_obj,
+                margin_pool_obj,
+                pool_obj,
+                repay_coin_obj,
+                clock_obj,
+            ],
+            vec![base.type_tag.clone(), quote.type_tag.clone()],
+        ))
+    }
+
     pub fn set_margin_manager_referral(
         &self,
         tx: &mut Transaction,
@@ -4094,6 +4429,15 @@ impl<'a> DeepBookAdminContract<'a> {
         ))
     }
 
+    pub fn add_stablecoin(
+        &self,
+        tx: &mut Transaction,
+        stable_coin_key: &str,
+        admin_cap_id: &str,
+    ) -> Result<serde_json::Value, ContractError> {
+        self.add_stable_coin(tx, stable_coin_key, admin_cap_id)
+    }
+
     pub fn remove_stable_coin(
         &self,
         tx: &mut Transaction,
@@ -4108,6 +4452,15 @@ impl<'a> DeepBookAdminContract<'a> {
             vec![registry_obj, cap_obj],
             vec![coin.type_tag.clone()],
         ))
+    }
+
+    pub fn remove_stablecoin(
+        &self,
+        tx: &mut Transaction,
+        stable_coin_key: &str,
+        admin_cap_id: &str,
+    ) -> Result<serde_json::Value, ContractError> {
+        self.remove_stable_coin(tx, stable_coin_key, admin_cap_id)
     }
 
     pub fn adjust_tick_size(
@@ -4133,6 +4486,16 @@ impl<'a> DeepBookAdminContract<'a> {
         ))
     }
 
+    pub fn adjust_tick_size_admin(
+        &self,
+        tx: &mut Transaction,
+        pool_key: &str,
+        new_tick_size: f64,
+        admin_cap_id: &str,
+    ) -> Result<serde_json::Value, ContractError> {
+        self.adjust_tick_size(tx, pool_key, new_tick_size, admin_cap_id)
+    }
+
     pub fn adjust_min_lot_size(
         &self,
         tx: &mut Transaction,
@@ -4155,6 +4518,109 @@ impl<'a> DeepBookAdminContract<'a> {
             &self.pool_target("adjust_min_lot_size_admin"),
             vec![pool_obj, lot_arg, min_arg, cap_obj, clock_obj],
             vec![base.type_tag.clone(), quote.type_tag.clone()],
+        ))
+    }
+
+    pub fn adjust_min_lot_size_admin(
+        &self,
+        tx: &mut Transaction,
+        pool_key: &str,
+        new_lot_size: f64,
+        new_min_size: f64,
+        admin_cap_id: &str,
+    ) -> Result<serde_json::Value, ContractError> {
+        self.adjust_min_lot_size(tx, pool_key, new_lot_size, new_min_size, admin_cap_id)
+    }
+
+    pub fn init_balance_manager_map(
+        &self,
+        tx: &mut Transaction,
+        admin_cap_id: &str,
+    ) -> Result<serde_json::Value, ContractError> {
+        let registry_obj = tx.object(self.config.package_ids.registry_id.clone());
+        let admin_cap_obj = tx.object(admin_cap_id.to_string());
+        Ok(tx.move_call(
+            &self.registry_target("init_balance_manager_map"),
+            vec![registry_obj, admin_cap_obj],
+            vec![],
+        ))
+    }
+
+    pub fn set_ewma_params(
+        &self,
+        tx: &mut Transaction,
+        pool_key: &str,
+        admin_cap_id: &str,
+        alpha: f64,
+        z_score_threshold: f64,
+        additional_taker_fee: f64,
+    ) -> Result<serde_json::Value, ContractError> {
+        let pool = self.config.get_pool(pool_key)?;
+        let base = self.config.get_coin(&pool.base_coin)?;
+        let quote = self.config.get_coin(&pool.quote_coin)?;
+        let pool_obj = tx.object(pool.address.clone());
+        let admin_cap_obj = tx.object(admin_cap_id.to_string());
+        let alpha_arg = tx.pure_bytes(&encode_u64((alpha * FLOAT_SCALAR).round() as u64));
+        let z_score_arg =
+            tx.pure_bytes(&encode_u64((z_score_threshold * FLOAT_SCALAR).round() as u64));
+        let fee_arg =
+            tx.pure_bytes(&encode_u64((additional_taker_fee * FLOAT_SCALAR).round() as u64));
+        let clock_obj = tx.object("0x6");
+        Ok(tx.move_call(
+            &self.pool_target("set_ewma_params"),
+            vec![pool_obj, admin_cap_obj, alpha_arg, z_score_arg, fee_arg, clock_obj],
+            vec![base.type_tag.clone(), quote.type_tag.clone()],
+        ))
+    }
+
+    pub fn enable_ewma_state(
+        &self,
+        tx: &mut Transaction,
+        pool_key: &str,
+        admin_cap_id: &str,
+        enabled: bool,
+    ) -> Result<serde_json::Value, ContractError> {
+        let pool = self.config.get_pool(pool_key)?;
+        let base = self.config.get_coin(&pool.base_coin)?;
+        let quote = self.config.get_coin(&pool.quote_coin)?;
+        let pool_obj = tx.object(pool.address.clone());
+        let admin_cap_obj = tx.object(admin_cap_id.to_string());
+        let enabled_arg = tx.pure_bytes(&encode_bool(enabled));
+        let clock_obj = tx.object("0x6");
+        Ok(tx.move_call(
+            &self.pool_target("enable_ewma_state"),
+            vec![pool_obj, admin_cap_obj, enabled_arg, clock_obj],
+            vec![base.type_tag.clone(), quote.type_tag.clone()],
+        ))
+    }
+
+    pub fn authorize_app(
+        &self,
+        tx: &mut Transaction,
+        admin_cap_id: &str,
+        app_type_tag: &str,
+    ) -> Result<serde_json::Value, ContractError> {
+        let registry_obj = tx.object(self.config.package_ids.registry_id.clone());
+        let admin_cap_obj = tx.object(admin_cap_id.to_string());
+        Ok(tx.move_call(
+            &self.registry_target("authorize_app"),
+            vec![registry_obj, admin_cap_obj],
+            vec![app_type_tag.to_string()],
+        ))
+    }
+
+    pub fn deauthorize_app(
+        &self,
+        tx: &mut Transaction,
+        admin_cap_id: &str,
+        app_type_tag: &str,
+    ) -> Result<serde_json::Value, ContractError> {
+        let registry_obj = tx.object(self.config.package_ids.registry_id.clone());
+        let admin_cap_obj = tx.object(admin_cap_id.to_string());
+        Ok(tx.move_call(
+            &self.registry_target("deauthorize_app"),
+            vec![registry_obj, admin_cap_obj],
+            vec![app_type_tag.to_string()],
         ))
     }
 }
@@ -4288,6 +4754,140 @@ impl<'a> MarginAdminContract<'a> {
                 clock_obj,
             ],
             vec![base.type_tag.clone(), quote.type_tag.clone()],
+        ))
+    }
+
+    pub fn add_config(
+        &self,
+        tx: &mut Transaction,
+        margin_admin_cap_id: &str,
+        config_object: serde_json::Value,
+    ) -> Result<serde_json::Value, ContractError> {
+        let registry_obj = tx.object(self.config.package_ids.margin_registry_id.clone());
+        let admin_cap_obj = tx.object(margin_admin_cap_id.to_string());
+        Ok(tx.move_call(
+            &self.margin_registry_target("add_config"),
+            vec![registry_obj, admin_cap_obj, config_object],
+            vec![format!(
+                "{}::oracle::PythConfig",
+                self.config.package_ids.margin_package_id
+            )],
+        ))
+    }
+
+    pub fn remove_config(
+        &self,
+        tx: &mut Transaction,
+        margin_admin_cap_id: &str,
+    ) -> Result<serde_json::Value, ContractError> {
+        let registry_obj = tx.object(self.config.package_ids.margin_registry_id.clone());
+        let admin_cap_obj = tx.object(margin_admin_cap_id.to_string());
+        Ok(tx.move_call(
+            &self.margin_registry_target("remove_config"),
+            vec![registry_obj, admin_cap_obj],
+            vec![format!(
+                "{}::oracle::PythConfig",
+                self.config.package_ids.margin_package_id
+            )],
+        ))
+    }
+
+    pub fn new_pool_config(
+        &self,
+        tx: &mut Transaction,
+        pool_key: &str,
+        min_withdraw_risk_ratio: f64,
+        min_borrow_risk_ratio: f64,
+        liquidation_risk_ratio: f64,
+        target_liquidation_risk_ratio: f64,
+        user_liquidation_reward: f64,
+        pool_liquidation_reward: f64,
+    ) -> Result<serde_json::Value, ContractError> {
+        let pool = self.config.get_pool(pool_key)?;
+        let base = self.config.get_coin(&pool.base_coin)?;
+        let quote = self.config.get_coin(&pool.quote_coin)?;
+        let registry_obj = tx.object(self.config.package_ids.margin_registry_id.clone());
+        let min_withdraw_arg =
+            tx.pure_bytes(&encode_u64((min_withdraw_risk_ratio * FLOAT_SCALAR).round() as u64));
+        let min_borrow_arg =
+            tx.pure_bytes(&encode_u64((min_borrow_risk_ratio * FLOAT_SCALAR).round() as u64));
+        let liquidation_arg =
+            tx.pure_bytes(&encode_u64((liquidation_risk_ratio * FLOAT_SCALAR).round() as u64));
+        let target_liquidation_arg = tx.pure_bytes(&encode_u64(
+            (target_liquidation_risk_ratio * FLOAT_SCALAR).round() as u64,
+        ));
+        let user_reward_arg =
+            tx.pure_bytes(&encode_u64((user_liquidation_reward * FLOAT_SCALAR).round() as u64));
+        let pool_reward_arg =
+            tx.pure_bytes(&encode_u64((pool_liquidation_reward * FLOAT_SCALAR).round() as u64));
+        Ok(tx.move_call(
+            &self.margin_registry_target("new_pool_config"),
+            vec![
+                registry_obj,
+                min_withdraw_arg,
+                min_borrow_arg,
+                liquidation_arg,
+                target_liquidation_arg,
+                user_reward_arg,
+                pool_reward_arg,
+            ],
+            vec![base.type_tag.clone(), quote.type_tag.clone()],
+        ))
+    }
+
+    pub fn new_pool_config_with_leverage(
+        &self,
+        tx: &mut Transaction,
+        pool_key: &str,
+        leverage: f64,
+    ) -> Result<serde_json::Value, ContractError> {
+        let pool = self.config.get_pool(pool_key)?;
+        let base = self.config.get_coin(&pool.base_coin)?;
+        let quote = self.config.get_coin(&pool.quote_coin)?;
+        let registry_obj = tx.object(self.config.package_ids.margin_registry_id.clone());
+        let leverage_arg = tx.pure_bytes(&encode_u64((leverage * FLOAT_SCALAR).round() as u64));
+        Ok(tx.move_call(
+            &self.margin_registry_target("new_pool_config_with_leverage"),
+            vec![registry_obj, leverage_arg],
+            vec![base.type_tag.clone(), quote.type_tag.clone()],
+        ))
+    }
+
+    pub fn new_coin_type_data_from_currency(
+        &self,
+        tx: &mut Transaction,
+        coin_key: &str,
+        currency_id: &str,
+        price_feed_id_bytes: &[u8],
+        max_conf_bps: u64,
+        max_ewma_difference_bps: u64,
+    ) -> Result<serde_json::Value, ContractError> {
+        let coin = self.config.get_coin(coin_key)?;
+        let currency_obj = tx.object(currency_id.to_string());
+        let feed_id_arg = tx.pure_bytes(price_feed_id_bytes);
+        let max_conf_arg = tx.pure_bytes(&encode_u64(max_conf_bps));
+        let max_ewma_arg = tx.pure_bytes(&encode_u64(max_ewma_difference_bps));
+        Ok(tx.move_call(
+            &format!(
+                "{}::oracle::new_coin_type_data_from_currency",
+                self.config.package_ids.margin_package_id
+            ),
+            vec![currency_obj, feed_id_arg, max_conf_arg, max_ewma_arg],
+            vec![coin.type_tag.clone()],
+        ))
+    }
+
+    pub fn new_pyth_config(
+        &self,
+        tx: &mut Transaction,
+        coin_type_data_vector: serde_json::Value,
+        max_age_seconds: u64,
+    ) -> Result<serde_json::Value, ContractError> {
+        let max_age_arg = tx.pure_bytes(&encode_u64(max_age_seconds));
+        Ok(tx.move_call(
+            &format!("{}::oracle::new_pyth_config", self.config.package_ids.margin_package_id),
+            vec![coin_type_data_vector, max_age_arg],
+            vec![],
         ))
     }
 

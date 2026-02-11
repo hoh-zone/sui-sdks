@@ -10,7 +10,8 @@ enum SignatureScheme {
 
 const int intentScopePersonalMessage = 3;
 
-Uint8List messageWithIntent(List<int> message, {int scope = intentScopePersonalMessage}) {
+Uint8List messageWithIntent(List<int> message,
+    {int scope = intentScopePersonalMessage}) {
   return Uint8List.fromList(<int>[scope, 0, 0, ...message]);
 }
 
@@ -28,7 +29,8 @@ class Ed25519Keypair {
 
   static Future<Ed25519Keypair> fromSeed(List<int> seed32) async {
     if (seed32.length != 32) {
-      throw ArgumentError.value(seed32.length, 'seed32.length', 'ed25519 seed must be 32 bytes');
+      throw ArgumentError.value(
+          seed32.length, 'seed32.length', 'ed25519 seed must be 32 bytes');
     }
     final keyPair = await _algorithm.newKeyPairFromSeed(seed32);
     final extracted = await keyPair.extract();
@@ -40,7 +42,8 @@ class Ed25519Keypair {
     return Uint8List.fromList(sig.bytes);
   }
 
-  Future<Uint8List> signWithIntent(List<int> message, {int scope = intentScopePersonalMessage}) {
+  Future<Uint8List> signWithIntent(List<int> message,
+      {int scope = intentScopePersonalMessage}) {
     return sign(messageWithIntent(message, scope: scope));
   }
 
@@ -52,7 +55,8 @@ class Ed25519Keypair {
     );
   }
 
-  Future<bool> verifyWithIntent(List<int> message, List<int> signature, {int scope = intentScopePersonalMessage}) {
+  Future<bool> verifyWithIntent(List<int> message, List<int> signature,
+      {int scope = intentScopePersonalMessage}) {
     return verify(messageWithIntent(message, scope: scope), signature);
   }
 
@@ -77,18 +81,23 @@ class Secp256r1Keypair {
     try {
       return Secp256r1Keypair._(await _algorithm.newKeyPair());
     } on UnimplementedError {
-      throw UnsupportedError('Secp256r1 is not available in pure dart:cryptography runtime yet');
+      throw UnsupportedError(
+          'Secp256r1 is not available in pure dart:cryptography runtime yet');
     }
   }
 
-  static Future<Secp256r1Keypair> fromPrivateKeyBytes(List<int> privateKey) async {
+  static Future<Secp256r1Keypair> fromPrivateKeyBytes(
+      List<int> privateKey) async {
     if (privateKey.length != 32) {
-      throw ArgumentError.value(privateKey.length, 'privateKey.length', 'secp256r1 private key must be 32 bytes');
+      throw ArgumentError.value(privateKey.length, 'privateKey.length',
+          'secp256r1 private key must be 32 bytes');
     }
     try {
-      return Secp256r1Keypair._(await _algorithm.newKeyPairFromSeed(privateKey));
+      return Secp256r1Keypair._(
+          await _algorithm.newKeyPairFromSeed(privateKey));
     } on UnimplementedError {
-      throw UnsupportedError('Secp256r1 is not available in pure dart:cryptography runtime yet');
+      throw UnsupportedError(
+          'Secp256r1 is not available in pure dart:cryptography runtime yet');
     }
   }
 
@@ -119,27 +128,99 @@ class Secp256r1Keypair {
 }
 
 class Secp256k1Keypair {
-  Secp256k1Keypair._();
+  Secp256k1Keypair._(this._rawKey);
 
-  static Future<Secp256k1Keypair> generate() async {
-    throw UnsupportedError('Secp256k1 is not available in dart:cryptography yet');
+  final Object _rawKey;
+  static Secp256k1Provider? _provider;
+
+  static void registerProvider(Secp256k1Provider? provider) {
+    _provider = provider;
   }
 
-  static Future<Secp256k1Keypair> fromPrivateKeyBytes(List<int> privateKey) async {
-    throw UnsupportedError('Secp256k1 is not available in dart:cryptography yet');
+  static Future<Secp256k1Keypair> generate() async {
+    final provider = _provider;
+    if (provider == null) {
+      throw UnsupportedError(
+          'Secp256k1 is not available in dart:cryptography yet');
+    }
+    final rawKey = await provider.generate();
+    return Secp256k1Keypair._(rawKey);
+  }
+
+  static Future<Secp256k1Keypair> fromPrivateKeyBytes(
+      List<int> privateKey) async {
+    final provider = _provider;
+    if (provider == null) {
+      throw UnsupportedError(
+          'Secp256k1 is not available in dart:cryptography yet');
+    }
+    final rawKey = await provider.fromPrivateKeyBytes(privateKey);
+    return Secp256k1Keypair._(rawKey);
   }
 
   Future<Uint8List> sign(List<int> message) async {
-    throw UnsupportedError('Secp256k1 is not available in dart:cryptography yet');
+    final provider = _provider;
+    if (provider == null) {
+      throw UnsupportedError(
+          'Secp256k1 is not available in dart:cryptography yet');
+    }
+    final sig = await provider.sign(_rawKey, message);
+    return Uint8List.fromList(sig);
   }
 
   Future<bool> verify(List<int> message, List<int> signature) async {
-    throw UnsupportedError('Secp256k1 is not available in dart:cryptography yet');
+    final provider = _provider;
+    if (provider == null) {
+      throw UnsupportedError(
+          'Secp256k1 is not available in dart:cryptography yet');
+    }
+    return provider.verify(_rawKey, message, signature);
   }
 
   Future<Uint8List> publicKeyBytes() async {
-    throw UnsupportedError('Secp256k1 is not available in dart:cryptography yet');
+    final provider = _provider;
+    if (provider == null) {
+      throw UnsupportedError(
+          'Secp256k1 is not available in dart:cryptography yet');
+    }
+    final publicKey = await provider.publicKeyBytes(_rawKey);
+    return Uint8List.fromList(publicKey);
   }
+}
+
+abstract class Secp256k1Provider {
+  Future<Object> generate();
+
+  Future<Object> fromPrivateKeyBytes(List<int> privateKey);
+
+  Future<List<int>> sign(Object key, List<int> message);
+
+  Future<bool> verify(Object key, List<int> message, List<int> signature);
+
+  Future<List<int>> publicKeyBytes(Object key);
+
+  Future<bool> verifyRawSignature({
+    required List<int> message,
+    required List<int> signature,
+    required List<int> publicKey,
+  });
+}
+
+Future<bool> verifyRawSignatureSecp256k1({
+  required List<int> message,
+  required List<int> signature,
+  required List<int> publicKey,
+}) {
+  final provider = Secp256k1Keypair._provider;
+  if (provider == null) {
+    throw UnsupportedError(
+        'Secp256k1 is not available in dart:cryptography yet');
+  }
+  return provider.verifyRawSignature(
+    message: message,
+    signature: signature,
+    publicKey: publicKey,
+  );
 }
 
 Future<bool> verifyRawSignatureEd25519({
@@ -150,7 +231,8 @@ Future<bool> verifyRawSignatureEd25519({
   final algo = Ed25519();
   return algo.verify(
     message,
-    signature: Signature(signature, publicKey: SimplePublicKey(publicKey, type: KeyPairType.ed25519)),
+    signature: Signature(signature,
+        publicKey: SimplePublicKey(publicKey, type: KeyPairType.ed25519)),
   );
 }
 

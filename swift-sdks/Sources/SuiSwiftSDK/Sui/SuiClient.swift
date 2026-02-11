@@ -33,6 +33,10 @@ public final class SuiClient {
         return info?["version"] as? String
     }
 
+    public func getRpcApiVersion() async throws -> String? {
+        try await getRPCAPIVersion()
+    }
+
     public func discoverRPCAPI() async throws -> [String: Any] {
         let result = try await call(method: "rpc.discover")
         guard let value = result as? [String: Any] else {
@@ -85,6 +89,15 @@ public final class SuiClient {
         return value
     }
 
+    public func dryRunTransactionBlock(transactionBlockBytes: [UInt8]) async throws -> [String: Any] {
+        let txBase64 = Data(transactionBlockBytes).base64EncodedString()
+        return try await dryRunTransactionBlock(txBytesBase64: txBase64)
+    }
+
+    public func dryRunTransactionBlock(transactionBlockData: Data) async throws -> [String: Any] {
+        return try await dryRunTransactionBlock(transactionBlockBytes: [UInt8](transactionBlockData))
+    }
+
     public func devInspectTransactionBlock(
         sender: String,
         transactionBlock: String,
@@ -114,6 +127,20 @@ public final class SuiClient {
         return try await devInspectTransactionBlock(
             sender: sender,
             transactionBlock: txBase64,
+            gasPrice: gasPrice,
+            epoch: epoch
+        )
+    }
+
+    public func devInspectTransactionBlock(
+        sender: String,
+        transactionBlockData: Data,
+        gasPrice: String? = nil,
+        epoch: String? = nil
+    ) async throws -> [String: Any] {
+        return try await devInspectTransactionBlock(
+            sender: sender,
+            transactionBlockBytes: [UInt8](transactionBlockData),
             gasPrice: gasPrice,
             epoch: epoch
         )
@@ -288,6 +315,10 @@ public final class SuiClient {
         return value
     }
 
+    public func getEvents(transactionDigest: String) async throws -> [[String: Any]] {
+        try await getEventsByTransaction(transactionDigest: transactionDigest)
+    }
+
     public func queryEvents(
         query: [String: Any],
         cursor: String? = nil,
@@ -299,6 +330,20 @@ public final class SuiClient {
             throw JSONRPCMalformedResponseError(reason: "suix_queryEvents result type mismatch")
         }
         return value
+    }
+
+    public func queryEvents(
+        query: [String: Any],
+        cursor: String? = nil,
+        limit: Int? = nil,
+        order: SuiOrder
+    ) async throws -> [String: Any] {
+        return try await queryEvents(
+            query: query,
+            cursor: cursor,
+            limit: limit,
+            descendingOrder: order.isDescending
+        )
     }
 
     public func queryTransactionBlocks(
@@ -314,12 +359,30 @@ public final class SuiClient {
         return value
     }
 
+    public func queryTransactionBlocks(
+        query: [String: Any],
+        cursor: String? = nil,
+        limit: Int? = nil,
+        order: SuiOrder
+    ) async throws -> [String: Any] {
+        return try await queryTransactionBlocks(
+            query: query,
+            cursor: cursor,
+            limit: limit,
+            descendingOrder: order.isDescending
+        )
+    }
+
     public func getCheckpoints(cursor: String? = nil, limit: Int? = nil, descendingOrder: Bool = false) async throws -> [String: Any] {
         let result = try await call(method: "sui_getCheckpoints", params: [cursor, limit, descendingOrder])
         guard let value = result as? [String: Any] else {
             throw JSONRPCMalformedResponseError(reason: "sui_getCheckpoints result type mismatch")
         }
         return value
+    }
+
+    public func getCheckpoints(cursor: String? = nil, limit: Int? = nil, order: SuiOrder) async throws -> [String: Any] {
+        return try await getCheckpoints(cursor: cursor, limit: limit, descendingOrder: order.isDescending)
     }
 
     public func getTransactionBlock(digest: String, options: [String: Any] = [:]) async throws -> [String: Any] {
@@ -412,6 +475,48 @@ public final class SuiClient {
         )
     }
 
+    public func executeTransactionBlock(
+        transactionBlockBytes: [UInt8],
+        signature: String,
+        options: [String: Any] = [:],
+        requestType: String? = nil
+    ) async throws -> [String: Any] {
+        return try await executeTransactionBlock(
+            transactionBlockBytes: transactionBlockBytes,
+            signatures: [signature],
+            options: options,
+            requestType: requestType
+        )
+    }
+
+    public func executeTransactionBlock(
+        transactionBlockData: Data,
+        signatures: [String],
+        options: [String: Any] = [:],
+        requestType: String? = nil
+    ) async throws -> [String: Any] {
+        return try await executeTransactionBlock(
+            transactionBlockBytes: [UInt8](transactionBlockData),
+            signatures: signatures,
+            options: options,
+            requestType: requestType
+        )
+    }
+
+    public func executeTransactionBlock(
+        transactionBlockData: Data,
+        signature: String,
+        options: [String: Any] = [:],
+        requestType: String? = nil
+    ) async throws -> [String: Any] {
+        return try await executeTransactionBlock(
+            transactionBlockData: transactionBlockData,
+            signatures: [signature],
+            options: options,
+            requestType: requestType
+        )
+    }
+
     public func signAndExecuteTransaction(
         transactionBlockBytes: [UInt8],
         signer: SuiSigner,
@@ -459,6 +564,26 @@ public final class SuiClient {
         }
         return try await signAndExecuteTransaction(
             transactionBlockBytes: [UInt8](txBytes),
+            signer: signer,
+            options: options,
+            requestType: requestType,
+            waitForConfirmation: waitForConfirmation,
+            waitTimeoutMs: waitTimeoutMs,
+            waitPollIntervalMs: waitPollIntervalMs
+        )
+    }
+
+    public func signAndExecuteTransaction(
+        transactionBlockData: Data,
+        signer: SuiSigner,
+        options: [String: Any] = [:],
+        requestType: String? = nil,
+        waitForConfirmation: Bool = false,
+        waitTimeoutMs: Int = 60_000,
+        waitPollIntervalMs: Int = 2_000
+    ) async throws -> [String: Any] {
+        return try await signAndExecuteTransaction(
+            transactionBlockBytes: [UInt8](transactionBlockData),
             signer: signer,
             options: options,
             requestType: requestType,
@@ -528,6 +653,14 @@ public final class SuiClient {
         return value
     }
 
+    public func getEpochMetrics(
+        cursor: String? = nil,
+        limit: Int? = nil,
+        order: SuiOrder
+    ) async throws -> [String: Any] {
+        return try await getEpochMetrics(cursor: cursor, limit: limit, descendingOrder: order.isDescending)
+    }
+
     public func getAllEpochAddressMetrics(descendingOrder: Bool? = nil) async throws -> [String: Any] {
         let result = try await call(method: "suix_getAllEpochAddressMetrics", params: [descendingOrder])
         guard let value = result as? [String: Any] else {
@@ -546,6 +679,14 @@ public final class SuiClient {
             throw JSONRPCMalformedResponseError(reason: "suix_getEpochs result type mismatch")
         }
         return value
+    }
+
+    public func getEpochs(
+        cursor: String? = nil,
+        limit: Int? = nil,
+        order: SuiOrder
+    ) async throws -> [String: Any] {
+        return try await getEpochs(cursor: cursor, limit: limit, descendingOrder: order.isDescending)
     }
 
     public func getMoveCallMetrics() async throws -> [String: Any] {
@@ -594,6 +735,10 @@ public final class SuiClient {
             throw JSONRPCMalformedResponseError(reason: "suix_getStakesByIds result type mismatch")
         }
         return value
+    }
+
+    public func getStakesByIds(stakedSuiIDs: [String]) async throws -> [[String: Any]] {
+        try await getStakesByIDs(stakedSuiIDs: stakedSuiIDs)
     }
 
     public func getValidatorsApy() async throws -> [String: Any] {
@@ -824,6 +969,22 @@ public final class SuiClient {
         )
     }
 
+    public func allEvents(
+        query: [String: Any],
+        cursor: String? = nil,
+        limit: Int = 100,
+        order: SuiOrder,
+        maxItems: Int? = nil
+    ) async throws -> [[String: Any]] {
+        return try await allEvents(
+            query: query,
+            cursor: cursor,
+            limit: limit,
+            descendingOrder: order.isDescending,
+            maxItems: maxItems
+        )
+    }
+
     public func allTransactionBlocks(
         query: [String: Any],
         cursor: String? = nil,
@@ -845,6 +1006,22 @@ public final class SuiClient {
         )
     }
 
+    public func allTransactionBlocks(
+        query: [String: Any],
+        cursor: String? = nil,
+        limit: Int = 100,
+        order: SuiOrder,
+        maxItems: Int? = nil
+    ) async throws -> [[String: Any]] {
+        return try await allTransactionBlocks(
+            query: query,
+            cursor: cursor,
+            limit: limit,
+            descendingOrder: order.isDescending,
+            maxItems: maxItems
+        )
+    }
+
     public func allCheckpoints(
         cursor: String? = nil,
         limit: Int = 100,
@@ -856,6 +1033,20 @@ public final class SuiClient {
                 try await self.getCheckpoints(cursor: pageCursor, limit: limit, descendingOrder: descendingOrder)
             },
             startCursor: cursor,
+            maxItems: maxItems
+        )
+    }
+
+    public func allCheckpoints(
+        cursor: String? = nil,
+        limit: Int = 100,
+        order: SuiOrder,
+        maxItems: Int? = nil
+    ) async throws -> [[String: Any]] {
+        return try await allCheckpoints(
+            cursor: cursor,
+            limit: limit,
+            descendingOrder: order.isDescending,
             maxItems: maxItems
         )
     }
@@ -875,6 +1066,20 @@ public final class SuiClient {
         )
     }
 
+    public func allEpochMetrics(
+        cursor: String? = nil,
+        limit: Int = 100,
+        order: SuiOrder,
+        maxItems: Int? = nil
+    ) async throws -> [[String: Any]] {
+        return try await allEpochMetrics(
+            cursor: cursor,
+            limit: limit,
+            descendingOrder: order.isDescending,
+            maxItems: maxItems
+        )
+    }
+
     public func allEpochs(
         cursor: String? = nil,
         limit: Int = 100,
@@ -886,6 +1091,20 @@ public final class SuiClient {
                 try await self.getEpochs(cursor: pageCursor, limit: limit, descendingOrder: descendingOrder)
             },
             startCursor: cursor,
+            maxItems: maxItems
+        )
+    }
+
+    public func allEpochs(
+        cursor: String? = nil,
+        limit: Int = 100,
+        order: SuiOrder,
+        maxItems: Int? = nil
+    ) async throws -> [[String: Any]] {
+        return try await allEpochs(
+            cursor: cursor,
+            limit: limit,
+            descendingOrder: order.isDescending,
             maxItems: maxItems
         )
     }

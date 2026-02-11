@@ -553,7 +553,7 @@ impl DeepBookClient {
         self.read_return_bcs_base64(&sim, 0, 0)
     }
 
-    pub fn get_price_info_object_age(&self, coin_key: &str) -> Result<i64, ClientError> {
+    fn price_info_object_age_internal(&self, coin_key: &str) -> Result<i64, ClientError> {
         let coin = self.config.get_coin(coin_key)?;
         match coin.price_info_object_id.as_deref() {
             Some(id) if !id.is_empty() => {
@@ -565,6 +565,14 @@ impl DeepBookClient {
             }
             _ => Ok(-1),
         }
+    }
+
+    pub async fn get_price_info_object_age(&self, coin_key: &str) -> Result<i64, ClientError> {
+        self.price_info_object_age_internal(coin_key)
+    }
+
+    pub fn get_price_info_object_age_sync(&self, coin_key: &str) -> Result<i64, ClientError> {
+        self.price_info_object_age_internal(coin_key)
     }
 
     pub async fn get_price_info_object(&self, coin_key: &str) -> Result<String, ClientError> {
@@ -1038,6 +1046,19 @@ impl DeepBookClient {
         margin_pool.get_id(&mut tx, coin_key)?;
         let sim = self.simulate(&tx).await?;
         self.read_address(&sim, 0, 0)
+    }
+
+    pub async fn get_deepbook_pool_margin_pool_ids(
+        &self,
+        pool_key: &str,
+    ) -> Result<String, ClientError> {
+        let margin_registry = MarginRegistryContract {
+            config: &self.config,
+        };
+        let mut tx = Transaction::new();
+        margin_registry.get_deepbook_pool_margin_pool_ids(&mut tx, pool_key)?;
+        let sim = self.simulate(&tx).await?;
+        self.read_return_bcs_base64(&sim, 0, 0)
     }
 
     pub async fn is_deepbook_pool_allowed(
