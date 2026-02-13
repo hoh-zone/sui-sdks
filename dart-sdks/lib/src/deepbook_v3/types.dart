@@ -30,11 +30,17 @@ class MarginPool {
 }
 
 class Coin {
-  const Coin({required this.address, required this.type, required this.scalar});
+  const Coin({
+    required this.address,
+    required this.type,
+    required this.scalar,
+    this.priceInfoObjectId,
+  });
 
   final String address;
   final String type;
   final double scalar;
+  final String? priceInfoObjectId;
 }
 
 class Pool {
@@ -185,4 +191,20 @@ class PlaceMarginMarketOrderParams {
   final bool isBid;
   final SelfMatchingOptions selfMatchingOption;
   final bool payWithDeep;
+}
+
+class SubmitProposalParams {
+  const SubmitProposalParams({
+    required this.poolKey,
+    required this.balanceManagerKey,
+    required this.takerFee,
+    required this.makerFee,
+    required this.stakeRequired,
+  });
+
+  final String poolKey;
+  final String balanceManagerKey;
+  final double takerFee;
+  final double makerFee;
+  final double stakeRequired;
 }
