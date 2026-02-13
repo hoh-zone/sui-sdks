@@ -19,6 +19,16 @@ class MarginManager {
   final String poolKey;
 }
 
+class MarginPool {
+  const MarginPool({
+    required this.address,
+    required this.type,
+  });
+
+  final String address;
+  final String type;
+}
+
 class Coin {
   const Coin({required this.address, required this.type, required this.scalar});
 
@@ -28,7 +38,8 @@ class Coin {
 }
 
 class Pool {
-  const Pool({required this.address, required this.baseCoin, required this.quoteCoin});
+  const Pool(
+      {required this.address, required this.baseCoin, required this.quoteCoin});
 
   final String address;
   final String baseCoin;

@@ -1,28 +1,26 @@
 package com.suisdks.sui.deepbook_v3.client;
 
+import com.suisdks.sui.deepbook_v3.DeepBookConfig;
 import com.suisdks.sui.jsonrpc.JsonRpcClient;
-import com.suisdks.sui.jsonrpc.JsonRpcTransport;
 
 import java.math.BigInteger;
 import java.util.*;
 
-public class DeepBookClient {
+public class NewDeepBookClient {
     private final JsonRpcClient rpcClient;
-    private final JsonRpcTransport transport;
     private DeepBookConfig config;
 
-    public DeepBookClient(JsonRpcClient rpcClient, DeepBookConfig config) {
+    public NewDeepBookClient(JsonRpcClient rpcClient, DeepBookConfig config) {
         this.rpcClient = rpcClient;
-        this.transport = ((com.suisdks.sui.jsonrpc.JsonRpcClientExpanded)rpcClient).getTransport();
         this.config = config;
     }
 
-    public static DeepBookClient forMainnet(JsonRpcClient rpcClient) {
-        return new DeepBookClient(rpcClient, DeepBookConfig.mainnet());
+    public static NewDeepBookClient forMainnet(JsonRpcClient rpcClient) {
+        return new NewDeepBookClient(rpcClient, DeepBookConfig.mainnet());
     }
 
-    public static DeepBookClient forTestnet(JsonRpcClient rpcClient) {
-        return new DeepBookClient(rpcClient, DeepBookConfig.testnet());
+    public static NewDeepBookClient forTestnet(JsonRpcClient rpcClient) {
+        return new NewDeepBookClient(rpcClient, DeepBookConfig.testnet());
     }
 
     public JsonRpcClient getRpcClient() {
@@ -30,13 +28,13 @@ public class DeepBookClient {
     }
 
     public String getEndpoint() {
-        return ((com.suisdks.sui.jsonrpc.JsonRpcClientExpanded)rpcClient).getEndpoint();
+        return rpcClient.getEndpoint();
     }
 
     // ==================== Helper Methods ====================
 
     private Map<String, Object> callRpc(String method, List<Object> params) {
-        return ((com.suisdks.sui.jsonrpc.JsonRpcClientExpanded)rpcClient).callRpcInternal(method, params);
+        return rpcClient.callRpcInternal(method, params);
     }
 
     private Map<String, Object> devInspectTransactionBlock(String sender, Map<String, Object> transactionData) {

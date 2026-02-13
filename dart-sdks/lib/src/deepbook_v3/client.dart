@@ -12,9 +12,15 @@ class DeepBookClient {
     deepbook = DeepBookContract(config, balanceManager);
     governance = GovernanceContract(config, balanceManager);
     flashLoans = FlashLoanContract(config);
+    admin = DeepBookAdminContract(config);
     marginManager = MarginManagerContract(config);
-    poolProxy = PoolProxyContract(config);
     marginTpsl = MarginTPSLContract(config);
+    swap = SwapMethods(config);
+    marginPool = MarginPoolContract(config);
+    marginLiquidations = MarginLiquidationsContract(config);
+    marginMaintainer = MarginMaintainerContract(config);
+    marginRegistry = MarginRegistryContract(config);
+    poolProxy = PoolProxyContract(config);
   }
 
   final dynamic client;
@@ -24,11 +30,18 @@ class DeepBookClient {
   late final DeepBookContract deepbook;
   late final GovernanceContract governance;
   late final FlashLoanContract flashLoans;
+  late final DeepBookAdminContract admin;
   late final MarginManagerContract marginManager;
-  late final PoolProxyContract poolProxy;
   late final MarginTPSLContract marginTpsl;
+  late final SwapMethods swap;
+  late final MarginPoolContract marginPool;
+  late final MarginLiquidationsContract marginLiquidations;
+  late final MarginMaintainerContract marginMaintainer;
+  late final MarginRegistryContract marginRegistry;
+  late final PoolProxyContract poolProxy;
 
-  Future<Map<String, dynamic>> checkManagerBalance(String managerKey, String coinKey) async {
+  Future<Map<String, dynamic>> checkManagerBalance(
+      String managerKey, String coinKey) async {
     final tx = Transaction();
     final manager = config.getBalanceManager(managerKey);
     final coin = config.getCoin(coinKey);
@@ -58,7 +71,8 @@ class DeepBookClient {
     return raw.isNotEmpty && raw.first == 1;
   }
 
-  Future<Map<String, dynamic>> getQuoteQuantityOut(String poolKey, double baseQuantity) async {
+  Future<Map<String, dynamic>> getQuoteQuantityOut(
+      String poolKey, double baseQuantity) async {
     final tx = Transaction();
     deepbook.getQuoteQuantityOut(tx, poolKey, baseQuantity);
     final pool = config.getPool(poolKey);
@@ -78,7 +92,8 @@ class DeepBookClient {
     };
   }
 
-  Future<Map<String, dynamic>> getBaseQuantityOut(String poolKey, double quoteQuantity) async {
+  Future<Map<String, dynamic>> getBaseQuantityOut(
+      String poolKey, double quoteQuantity) async {
     final tx = Transaction();
     deepbook.getBaseQuantityOut(tx, poolKey, quoteQuantity);
     final pool = config.getPool(poolKey);
@@ -98,7 +113,8 @@ class DeepBookClient {
     };
   }
 
-  Future<Map<String, dynamic>> getQuantityOut(String poolKey, double baseQuantity, double quoteQuantity) async {
+  Future<Map<String, dynamic>> getQuantityOut(
+      String poolKey, double baseQuantity, double quoteQuantity) async {
     final tx = Transaction();
     deepbook.getQuantityOut(tx, poolKey, baseQuantity, quoteQuantity);
     final pool = config.getPool(poolKey);
@@ -151,7 +167,8 @@ class DeepBookClient {
     return out;
   }
 
-  Future<Map<String, dynamic>> _rpcCall(String method, List<dynamic> params) async {
+  Future<Map<String, dynamic>> _rpcCall(
+      String method, List<dynamic> params) async {
     try {
       final out = await client.call(method, params);
       return Map<String, dynamic>.from(out as Map);
@@ -161,7 +178,8 @@ class DeepBookClient {
     }
   }
 
-  Uint8List _returnBytes(Map<String, dynamic> sim, int commandIndex, int returnIndex) {
+  Uint8List _returnBytes(
+      Map<String, dynamic> sim, int commandIndex, int returnIndex) {
     final commandResults = sim['commandResults'];
     if (commandResults is! List || commandResults.length <= commandIndex) {
       throw StateError('missing commandResults[$commandIndex]');

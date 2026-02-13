@@ -7,7 +7,7 @@ import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
 import java.math.BigInteger;
 
-public class TransactionResult {
+class TransactionResult {
     private final boolean success;
     private final String error;
 
@@ -33,7 +33,7 @@ public class TransactionResult {
     }
 }
 
-public class ObjectCache {
+class ObjectCache {
     private final Map<String, Map<String, Object>> cache = new HashMap<>();
     private final Map<String, Map<String, Object>> ownedObjects = new HashMap<>();
     private final Map<String, Map<String, Object>> customCache = new HashMap<>();
@@ -81,7 +81,7 @@ public class ObjectCache {
     }
 }
 
-public class SerialTransactionExecutor {
+class SerialTransactionExecutor {
     private final TransactionExecutor executor;
     private final Object lock = new Object();
     private final ObjectCache cache = new ObjectCache();
@@ -108,7 +108,7 @@ public class SerialTransactionExecutor {
     }
 }
 
-public class ParallelTransactionExecutor {
+class ParallelTransactionExecutor {
     private final int maxWorkers;
     private final ObjectCache cache = new ObjectCache();
     private final Map<String, List<Runnable>> objectQueues = new HashMap<>();
@@ -128,7 +128,29 @@ public class ParallelTransactionExecutor {
     }
 
     private TransactionResult execute(Transaction transaction) {
-        return TransactionResult.success();
+        if (transaction == null) {
+            return TransactionResult.failure("transaction is null");
+        }
+        if (transaction.getSender() == null || transaction.getSender().isBlank()) {
+            return TransactionResult.failure("missing sender");
+        }
+        List<Map<String, Object>> commands = transaction.getCommands();
+        if (commands == null || commands.isEmpty()) {
+            return TransactionResult.failure("transaction has no commands");
+        }
+        String key = transaction.getSender();
+        objectQueues.computeIfAbsent(key, ignored -> new ArrayList<>());
+        if (objectQueues.get(key).size() >= maxWorkers) {
+            return TransactionResult.failure("parallel queue saturated for sender");
+        }
+        Runnable marker = () -> {
+        };
+        objectQueues.get(key).add(marker);
+        try {
+            return TransactionResult.success();
+        } finally {
+            objectQueues.get(key).remove(marker);
+        }
     }
 
     public void resetCache() {
@@ -141,15 +163,26 @@ public class ParallelTransactionExecutor {
     }
 }
 
-public class CachingTransactionExecutor {
-    private final ObjectCache cache = new ObjectCache();
+class CachingTransactionExecutor {
+    private final ObjectCache cache;
 
     public CachingTransactionExecutor(ObjectCache cache) {
-        this.cache = cache;
+        this.cache = cache == null ? new ObjectCache() : cache;
     }
 
     public CompletableFuture<TransactionResult> execute(Transaction transaction) {
         return CompletableFuture.supplyAsync(() -> {
+            if (transaction == null) {
+                return TransactionResult.failure("transaction is null");
+            }
+            if (transaction.getSender() == null || transaction.getSender().isBlank()) {
+                return TransactionResult.failure("missing sender");
+            }
+            if (transaction.getCommands() == null || transaction.getCommands().isEmpty()) {
+                return TransactionResult.failure("transaction has no commands");
+            }
+            cache.setCustom("lastSender", Map.of("sender", transaction.getSender()));
+            cache.setCustom("lastCommandCount", Map.of("count", transaction.getCommands().size()));
             return TransactionResult.success();
         });
     }
@@ -184,6 +217,15 @@ public class TransactionExecutor {
     }
 
     public TransactionResult execute(Transaction transaction) {
+        if (transaction == null) {
+            return TransactionResult.failure("transaction is null");
+        }
+        if (transaction.getSender() == null || transaction.getSender().isBlank()) {
+            return TransactionResult.failure("missing sender");
+        }
+        if (transaction.getCommands() == null || transaction.getCommands().isEmpty()) {
+            return TransactionResult.failure("transaction has no commands");
+        }
         queue.add(transaction);
         return TransactionResult.success();
     }
@@ -193,7 +235,7 @@ public class TransactionExecutor {
     }
 }
 
-public class Transaction {
+class Transaction {
     private List<Map<String, Object>> commands;
     private String sender;
     private BigInteger gasPrice;
