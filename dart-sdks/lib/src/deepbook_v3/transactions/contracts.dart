@@ -1884,6 +1884,304 @@ class PoolProxyContract {
       [base.type, quote.type],
     );
   }
+
+  Map<String, dynamic> placeReduceOnlyLimitOrder(
+      Transaction tx, PlaceMarginLimitOrderParams params) {
+    final manager = config.getMarginManager(params.marginManagerKey);
+    final pool = config.getPool(manager.poolKey);
+    final base = config.getCoin(pool.baseCoin);
+    final quote = config.getCoin(pool.quoteCoin);
+    final price =
+        ((params.price * floatScalar * quote.scalar) / base.scalar).round();
+    final quantity = (params.quantity * base.scalar).round();
+    final expiration =
+        params.expiration == 0 ? maxTimestamp : params.expiration;
+    final marginPool = params.isBid
+        ? config.getMarginPool(pool.baseCoin)
+        : config.getMarginPool(pool.quoteCoin);
+    final debtType = params.isBid ? base.type : quote.type;
+
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::pool_proxy::place_reduce_only_limit_order',
+      [
+        tx.object(config.packageIds.marginRegistryId),
+        tx.object(manager.address),
+        tx.object(pool.address),
+        tx.object(marginPool.address),
+        tx.pure(encodeU64(int.parse(params.clientOrderId))),
+        tx.pure([params.orderType.index]),
+        tx.pure([params.selfMatchingOption.index]),
+        tx.pure(encodeU64(price)),
+        tx.pure(encodeU64(quantity)),
+        tx.pure(encodeBool(params.isBid)),
+        tx.pure(encodeBool(params.payWithDeep)),
+        tx.pure(encodeU64(expiration)),
+        tx.object('0x6'),
+      ],
+      [base.type, quote.type, debtType],
+    );
+  }
+
+  Map<String, dynamic> placeReduceOnlyMarketOrder(
+      Transaction tx, PlaceMarginMarketOrderParams params) {
+    final manager = config.getMarginManager(params.marginManagerKey);
+    final pool = config.getPool(manager.poolKey);
+    final base = config.getCoin(pool.baseCoin);
+    final quote = config.getCoin(pool.quoteCoin);
+    final quantity = (params.quantity * base.scalar).round();
+    final marginPool = params.isBid
+        ? config.getMarginPool(pool.baseCoin)
+        : config.getMarginPool(pool.quoteCoin);
+    final debtType = params.isBid ? base.type : quote.type;
+
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::pool_proxy::place_reduce_only_market_order',
+      [
+        tx.object(config.packageIds.marginRegistryId),
+        tx.object(manager.address),
+        tx.object(pool.address),
+        tx.object(marginPool.address),
+        tx.pure(encodeU64(int.parse(params.clientOrderId))),
+        tx.pure([params.selfMatchingOption.index]),
+        tx.pure(encodeU64(quantity)),
+        tx.pure(encodeBool(params.isBid)),
+        tx.pure(encodeBool(params.payWithDeep)),
+        tx.object('0x6'),
+      ],
+      [base.type, quote.type, debtType],
+    );
+  }
+
+  Map<String, dynamic> modifyOrder(Transaction tx, String marginManagerKey,
+      String orderId, double newQuantity) {
+    final marginManager = config.getMarginManager(marginManagerKey);
+    final pool = config.getPool(marginManager.poolKey);
+    final base = config.getCoin(pool.baseCoin);
+    final quote = config.getCoin(pool.quoteCoin);
+    final inputQuantity = (newQuantity * base.scalar).round();
+
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::pool_proxy::modify_order',
+      [
+        tx.object(config.packageIds.marginRegistryId),
+        tx.object(marginManager.address),
+        tx.object(pool.address),
+        tx.pure(encodeU128(orderId)),
+        tx.pure(encodeU64(inputQuantity)),
+        tx.object('0x6'),
+      ],
+      [base.type, quote.type],
+    );
+  }
+
+  Map<String, dynamic> cancelOrder(
+      Transaction tx, String marginManagerKey, String orderId) {
+    final marginManager = config.getMarginManager(marginManagerKey);
+    final pool = config.getPool(marginManager.poolKey);
+    final base = config.getCoin(pool.baseCoin);
+    final quote = config.getCoin(pool.quoteCoin);
+
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::pool_proxy::cancel_order',
+      [
+        tx.object(config.packageIds.marginRegistryId),
+        tx.object(marginManager.address),
+        tx.object(pool.address),
+        tx.pure(encodeU128(orderId)),
+        tx.object('0x6'),
+      ],
+      [base.type, quote.type],
+    );
+  }
+
+  Map<String, dynamic> cancelOrders(
+      Transaction tx, String marginManagerKey, List<String> orderIds) {
+    final marginManager = config.getMarginManager(marginManagerKey);
+    final pool = config.getPool(marginManager.poolKey);
+    final base = config.getCoin(pool.baseCoin);
+    final quote = config.getCoin(pool.quoteCoin);
+
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::pool_proxy::cancel_orders',
+      [
+        tx.object(config.packageIds.marginRegistryId),
+        tx.object(marginManager.address),
+        tx.object(pool.address),
+        tx.pure(_encodeVecU128(orderIds)),
+        tx.object('0x6'),
+      ],
+      [base.type, quote.type],
+    );
+  }
+
+  Map<String, dynamic> cancelAllOrders(
+      Transaction tx, String marginManagerKey) {
+    final marginManager = config.getMarginManager(marginManagerKey);
+    final pool = config.getPool(marginManager.poolKey);
+    final base = config.getCoin(pool.baseCoin);
+    final quote = config.getCoin(pool.quoteCoin);
+
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::pool_proxy::cancel_all_orders',
+      [
+        tx.object(config.packageIds.marginRegistryId),
+        tx.object(marginManager.address),
+        tx.object(pool.address),
+        tx.object('0x6'),
+      ],
+      [base.type, quote.type],
+    );
+  }
+
+  Map<String, dynamic> withdrawSettledAmounts(
+      Transaction tx, String marginManagerKey) {
+    final marginManager = config.getMarginManager(marginManagerKey);
+    final pool = config.getPool(marginManager.poolKey);
+    final base = config.getCoin(pool.baseCoin);
+    final quote = config.getCoin(pool.quoteCoin);
+
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::pool_proxy::withdraw_settled_amounts',
+      [
+        tx.object(config.packageIds.marginRegistryId),
+        tx.object(marginManager.address),
+        tx.object(pool.address),
+      ],
+      [base.type, quote.type],
+    );
+  }
+
+  Map<String, dynamic> stake(
+      Transaction tx, String marginManagerKey, double stakeAmount) {
+    final marginManager = config.getMarginManager(marginManagerKey);
+    final pool = config.getPool(marginManager.poolKey);
+    final base = config.getCoin(pool.baseCoin);
+    final quote = config.getCoin(pool.quoteCoin);
+    final deepCoin = config.getCoin('DEEP');
+    final stakeInput = (stakeAmount * deepCoin.scalar).round();
+
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::pool_proxy::stake',
+      [
+        tx.object(config.packageIds.marginRegistryId),
+        tx.object(marginManager.address),
+        tx.object(pool.address),
+        tx.pure(encodeU64(stakeInput)),
+      ],
+      [base.type, quote.type],
+    );
+  }
+
+  Map<String, dynamic> unstake(Transaction tx, String marginManagerKey) {
+    final marginManager = config.getMarginManager(marginManagerKey);
+    final pool = config.getPool(marginManager.poolKey);
+    final base = config.getCoin(pool.baseCoin);
+    final quote = config.getCoin(pool.quoteCoin);
+
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::pool_proxy::unstake',
+      [
+        tx.object(config.packageIds.marginRegistryId),
+        tx.object(marginManager.address),
+        tx.object(pool.address),
+      ],
+      [base.type, quote.type],
+    );
+  }
+
+  Map<String, dynamic> submitProposal(
+      Transaction tx, String marginManagerKey, MarginProposalParams params) {
+    final marginManager = config.getMarginManager(marginManagerKey);
+    final pool = config.getPool(marginManager.poolKey);
+    final base = config.getCoin(pool.baseCoin);
+    final quote = config.getCoin(pool.quoteCoin);
+    final stakeInput = (params.stakeRequired * floatScalar).round();
+    final takerFeeInput = (params.takerFee * floatScalar).round();
+    final makerFeeInput = (params.makerFee * floatScalar).round();
+
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::pool_proxy::submit_proposal',
+      [
+        tx.object(config.packageIds.marginRegistryId),
+        tx.object(marginManager.address),
+        tx.object(pool.address),
+        tx.pure(encodeU64(takerFeeInput)),
+        tx.pure(encodeU64(makerFeeInput)),
+        tx.pure(encodeU64(stakeInput)),
+      ],
+      [base.type, quote.type],
+    );
+  }
+
+  Map<String, dynamic> vote(
+      Transaction tx, String marginManagerKey, String proposalId) {
+    final marginManager = config.getMarginManager(marginManagerKey);
+    final pool = config.getPool(marginManager.poolKey);
+    final base = config.getCoin(pool.baseCoin);
+    final quote = config.getCoin(pool.quoteCoin);
+
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::pool_proxy::vote',
+      [
+        tx.object(config.packageIds.marginRegistryId),
+        tx.object(marginManager.address),
+        tx.object(pool.address),
+        tx.pure(encodeU128(proposalId)),
+      ],
+      [base.type, quote.type],
+    );
+  }
+
+  Map<String, dynamic> claimRebate(Transaction tx, String marginManagerKey) {
+    final marginManager = config.getMarginManager(marginManagerKey);
+    final pool = config.getPool(marginManager.poolKey);
+    final base = config.getCoin(pool.baseCoin);
+    final quote = config.getCoin(pool.quoteCoin);
+
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::pool_proxy::claim_rebate',
+      [
+        tx.object(config.packageIds.marginRegistryId),
+        tx.object(marginManager.address),
+        tx.object(pool.address),
+      ],
+      [base.type, quote.type],
+    );
+  }
+
+  Map<String, dynamic> withdrawMarginSettledAmounts(
+      Transaction tx, String poolKey, String marginManagerId) {
+    final pool = config.getPool(poolKey);
+    final base = config.getCoin(pool.baseCoin);
+    final quote = config.getCoin(pool.quoteCoin);
+
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::pool_proxy::withdraw_settled_amounts_permissionless',
+      [
+        tx.object(config.packageIds.marginRegistryId),
+        tx.object(marginManagerId),
+        tx.object(pool.address),
+      ],
+      [base.type, quote.type],
+    );
+  }
+
+  List<int> _encodeVecU128(List<String> values) {
+    final result = <int>[];
+    for (final v in values) {
+      result.addAll(encodeU128(v));
+    }
+    return result;
+  }
+
+  List<int> _encodeAddress(String address) {
+    final hex = address.startsWith('0x') ? address.substring(2) : address;
+    final bytes = <int>[];
+    for (var i = 0; i < hex.length; i += 2) {
+      bytes.add(int.parse(hex.substring(i, i + 2), radix: 16));
+    }
+    return bytes;
+  }
 }
 
 class MarginTPSLContract {
@@ -2009,6 +2307,89 @@ class MarginTPSLContract {
     return tx.moveCall(
       '${config.packageIds.marginPackageId}::margin_manager::highest_trigger_below_price',
       [tx.object(marginManagerId)],
+      [base.type, quote.type],
+    );
+  }
+
+  Map<String, dynamic> newPendingLimitOrder(Transaction tx, String poolKey,
+      int clientOrderId, double price, double quantity, bool isBid,
+      {bool payWithDeep = true, int expireTimestamp = 0}) {
+    final pool = config.getPool(poolKey);
+    final base = config.getCoin(pool.baseCoin);
+    final quote = config.getCoin(pool.quoteCoin);
+    final inputPrice =
+        ((price * floatScalar * quote.scalar) / base.scalar).round();
+    final inputQuantity = (quantity * base.scalar).round();
+
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::tpsl::new_pending_limit_order',
+      [
+        tx.pure(encodeU64(clientOrderId)),
+        tx.pure([0]),
+        tx.pure([0]),
+        tx.pure(encodeU64(inputPrice)),
+        tx.pure(encodeU64(inputQuantity)),
+        tx.pure(encodeBool(isBid)),
+        tx.pure(encodeBool(payWithDeep)),
+        tx.pure(encodeU64(expireTimestamp)),
+      ],
+      const [],
+    );
+  }
+
+  Map<String, dynamic> newPendingMarketOrder(Transaction tx, String poolKey,
+      int clientOrderId, double quantity, bool isBid,
+      {bool payWithDeep = true}) {
+    final pool = config.getPool(poolKey);
+    final base = config.getCoin(pool.baseCoin);
+    final inputQuantity = (quantity * base.scalar).round();
+
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::tpsl::new_pending_market_order',
+      [
+        tx.pure(encodeU64(clientOrderId)),
+        tx.pure([0]),
+        tx.pure(encodeU64(inputQuantity)),
+        tx.pure(encodeBool(isBid)),
+        tx.pure(encodeBool(payWithDeep)),
+      ],
+      const [],
+    );
+  }
+
+  Map<String, dynamic> addConditionalOrder(
+      Transaction tx,
+      String marginManagerKey,
+      String conditionalOrderId,
+      bool triggerBelowPrice,
+      double triggerPrice,
+      dynamic pendingOrder) {
+    final manager = config.getMarginManager(marginManagerKey);
+    final pool = config.getPool(manager.poolKey);
+    final base = config.getCoin(pool.baseCoin);
+    final quote = config.getCoin(pool.quoteCoin);
+    final inputPrice =
+        ((triggerPrice * floatScalar * quote.scalar) / base.scalar).round();
+
+    final condition = tx.moveCall(
+      '${config.packageIds.marginPackageId}::tpsl::new_condition',
+      [tx.pure(encodeBool(triggerBelowPrice)), tx.pure(encodeU64(inputPrice))],
+      const [],
+    );
+
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::margin_manager::add_conditional_order',
+      [
+        tx.object(manager.address),
+        tx.object(pool.address),
+        tx.object(base.priceInfoObjectId),
+        tx.object(quote.priceInfoObjectId),
+        tx.object(config.packageIds.marginRegistryId),
+        tx.pure(encodeU64(int.parse(conditionalOrderId))),
+        condition,
+        pendingOrder,
+        tx.object('0x6'),
+      ],
       [base.type, quote.type],
     );
   }
@@ -2610,6 +2991,65 @@ class MarginMaintainerContract {
       [marginPool.type],
     );
   }
+
+  Map<String, dynamic> newProtocolConfig(
+      Transaction tx,
+      String coinKey,
+      MarginPoolConfigParams marginPoolConfig,
+      InterestConfigParams interestConfig) {
+    final coin = config.getCoin(coinKey);
+    final marginPoolConfigObj = tx.moveCall(
+      '${config.packageIds.marginPackageId}::protocol_config::new_margin_pool_config',
+      [
+        tx.pure(encodeU64((marginPoolConfig.supplyCap * coin.scalar).round())),
+        tx.pure(encodeU64(
+            (marginPoolConfig.maxUtilizationRate * floatScalar).round())),
+        tx.pure(
+            encodeU64((marginPoolConfig.referralSpread * floatScalar).round())),
+        tx.pure(encodeU64((marginPoolConfig.minBorrow * coin.scalar).round())),
+      ],
+      const [],
+    );
+    final interestConfigObj = tx.moveCall(
+      '${config.packageIds.marginPackageId}::protocol_config::new_interest_config',
+      [
+        tx.pure(encodeU64((interestConfig.baseRate * floatScalar).round())),
+        tx.pure(encodeU64((interestConfig.baseSlope * floatScalar).round())),
+        tx.pure(encodeU64(
+            (interestConfig.optimalUtilization * floatScalar).round())),
+        tx.pure(encodeU64((interestConfig.excessSlope * floatScalar).round())),
+      ],
+      const [],
+    );
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::protocol_config::new_protocol_config',
+      [marginPoolConfigObj, interestConfigObj],
+      const [],
+    );
+  }
+
+  Map<String, dynamic> newMarginPoolConfigWithRateLimit(
+      Transaction tx, String coinKey, MarginPoolConfigParams marginPoolConfig) {
+    final coin = config.getCoin(coinKey);
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::protocol_config::new_margin_pool_config_with_rate_limit',
+      [
+        tx.pure(encodeU64((marginPoolConfig.supplyCap * coin.scalar).round())),
+        tx.pure(encodeU64(
+            (marginPoolConfig.maxUtilizationRate * floatScalar).round())),
+        tx.pure(
+            encodeU64((marginPoolConfig.referralSpread * floatScalar).round())),
+        tx.pure(encodeU64((marginPoolConfig.minBorrow * coin.scalar).round())),
+        tx.pure(encodeU64(
+            (marginPoolConfig.rateLimitCapacity! * coin.scalar).round())),
+        tx.pure(encodeU64(
+            (marginPoolConfig.rateLimitRefillRatePerMs! * coin.scalar)
+                .round())),
+        tx.pure(encodeBool(marginPoolConfig.rateLimitEnabled!)),
+      ],
+      const [],
+    );
+  }
 }
 
 class MarginRegistryContract {
@@ -2779,5 +3219,527 @@ class MarginRegistryContract {
       bytes.add(int.parse(hex.substring(i, i + 2), radix: 16));
     }
     return bytes;
+  }
+}
+
+class DeepbookAdminContract {
+  const DeepbookAdminContract(this.config);
+
+  final DeepBookConfig config;
+
+  String _adminCap() {
+    if (config.adminCap == null || config.adminCap!.isEmpty) {
+      throw Exception('ADMIN_CAP environment variable not set');
+    }
+    return config.adminCap!;
+  }
+
+  Map<String, dynamic> createPoolAdmin(
+      Transaction tx, CreatePoolAdminParams params) {
+    final base = config.getCoin(params.baseCoinKey);
+    final quote = config.getCoin(params.quoteCoinKey);
+    final adjustedTickSize =
+        ((params.tickSize * floatScalar * quote.scalar) / base.scalar).round();
+    final adjustedLotSize = (params.lotSize * base.scalar).round();
+    final adjustedMinSize = (params.minSize * base.scalar).round();
+
+    return tx.moveCall(
+      '${config.packageIds.deepbookPackageId}::pool::create_pool_admin',
+      [
+        tx.object(config.packageIds.registryId),
+        tx.pure(encodeU64(adjustedTickSize)),
+        tx.pure(encodeU64(adjustedLotSize)),
+        tx.pure(encodeU64(adjustedMinSize)),
+        tx.pure(encodeBool(params.whitelisted)),
+        tx.pure(encodeBool(params.stablePool)),
+        tx.object(_adminCap()),
+      ],
+      [base.type, quote.type],
+    );
+  }
+
+  Map<String, dynamic> unregisterPoolAdmin(Transaction tx, String poolKey) {
+    final pool = config.getPool(poolKey);
+    final base = config.getCoin(pool.baseCoin);
+    final quote = config.getCoin(pool.quoteCoin);
+
+    return tx.moveCall(
+      '${config.packageIds.deepbookPackageId}::pool::unregister_pool_admin',
+      [
+        tx.object(pool.address),
+        tx.object(config.packageIds.registryId),
+        tx.object(_adminCap()),
+      ],
+      [base.type, quote.type],
+    );
+  }
+
+  Map<String, dynamic> updateAllowedVersions(Transaction tx, String poolKey) {
+    final pool = config.getPool(poolKey);
+    final base = config.getCoin(pool.baseCoin);
+    final quote = config.getCoin(pool.quoteCoin);
+
+    return tx.moveCall(
+      '${config.packageIds.deepbookPackageId}::pool::update_allowed_versions',
+      [
+        tx.object(pool.address),
+        tx.object(config.packageIds.registryId),
+        tx.object(_adminCap()),
+      ],
+      [base.type, quote.type],
+    );
+  }
+
+  Map<String, dynamic> enableVersion(Transaction tx, int version) {
+    return tx.moveCall(
+      '${config.packageIds.deepbookPackageId}::registry::enable_version',
+      [
+        tx.object(config.packageIds.registryId),
+        tx.pure(encodeU64(version)),
+        tx.object(_adminCap()),
+      ],
+      const [],
+    );
+  }
+
+  Map<String, dynamic> disableVersion(Transaction tx, int version) {
+    return tx.moveCall(
+      '${config.packageIds.deepbookPackageId}::registry::disable_version',
+      [
+        tx.object(config.packageIds.registryId),
+        tx.pure(encodeU64(version)),
+        tx.object(_adminCap()),
+      ],
+      const [],
+    );
+  }
+
+  Map<String, dynamic> setTreasuryAddress(
+      Transaction tx, String treasuryAddress) {
+    return tx.moveCall(
+      '${config.packageIds.deepbookPackageId}::registry::set_treasury_address',
+      [
+        tx.object(config.packageIds.registryId),
+        tx.pure(_encodeAddress(treasuryAddress)),
+        tx.object(_adminCap()),
+      ],
+      const [],
+    );
+  }
+
+  Map<String, dynamic> addStableCoin(Transaction tx, String stableCoinKey) {
+    final stableCoinType = config.getCoin(stableCoinKey).type;
+    return tx.moveCall(
+      '${config.packageIds.deepbookPackageId}::registry::add_stablecoin',
+      [tx.object(config.packageIds.registryId), tx.object(_adminCap())],
+      [stableCoinType],
+    );
+  }
+
+  Map<String, dynamic> removeStableCoin(Transaction tx, String stableCoinKey) {
+    final stableCoinType = config.getCoin(stableCoinKey).type;
+    return tx.moveCall(
+      '${config.packageIds.deepbookPackageId}::registry::remove_stablecoin',
+      [tx.object(config.packageIds.registryId), tx.object(_adminCap())],
+      [stableCoinType],
+    );
+  }
+
+  Map<String, dynamic> adjustTickSize(
+      Transaction tx, String poolKey, double newTickSize) {
+    final pool = config.getPool(poolKey);
+    final base = config.getCoin(pool.baseCoin);
+    final quote = config.getCoin(pool.quoteCoin);
+    final adjustedTickSize =
+        ((newTickSize * floatScalar * quote.scalar) / base.scalar).round();
+
+    return tx.moveCall(
+      '${config.packageIds.deepbookPackageId}::pool::adjust_tick_size_admin',
+      [
+        tx.object(pool.address),
+        tx.pure(encodeU64(adjustedTickSize)),
+        tx.object(_adminCap()),
+        tx.object('0x6'),
+      ],
+      [base.type, quote.type],
+    );
+  }
+
+  Map<String, dynamic> adjustMinLotSize(
+      Transaction tx, String poolKey, double newLotSize, double newMinSize) {
+    final pool = config.getPool(poolKey);
+    final base = config.getCoin(pool.baseCoin);
+    final quote = config.getCoin(pool.quoteCoin);
+    final adjustedLotSize = (newLotSize * base.scalar).round();
+    final adjustedMinSize = (newMinSize * base.scalar).round();
+
+    return tx.moveCall(
+      '${config.packageIds.deepbookPackageId}::pool::adjust_min_lot_size_admin',
+      [
+        tx.object(pool.address),
+        tx.pure(encodeU64(adjustedLotSize)),
+        tx.pure(encodeU64(adjustedMinSize)),
+        tx.object(_adminCap()),
+        tx.object('0x6'),
+      ],
+      [base.type, quote.type],
+    );
+  }
+
+  Map<String, dynamic> initBalanceManagerMap(Transaction tx) {
+    return tx.moveCall(
+      '${config.packageIds.deepbookPackageId}::registry::init_balance_manager_map',
+      [tx.object(config.packageIds.registryId), tx.object(_adminCap())],
+      const [],
+    );
+  }
+
+  Map<String, dynamic> setEwmaParams(
+      Transaction tx, String poolKey, SetEwmaParams params) {
+    final pool = config.getPool(poolKey);
+    final base = config.getCoin(pool.baseCoin);
+    final quote = config.getCoin(pool.quoteCoin);
+    final adjustedAlpha = (params.alpha * floatScalar).round();
+    final adjustedZScoreThreshold =
+        (params.zScoreThreshold * floatScalar).round();
+    final adjustedAdditionalTakerFee =
+        (params.additionalTakerFee * floatScalar).round();
+
+    return tx.moveCall(
+      '${config.packageIds.deepbookPackageId}::pool::set_ewma_params',
+      [
+        tx.object(pool.address),
+        tx.object(_adminCap()),
+        tx.pure(encodeU64(adjustedAlpha)),
+        tx.pure(encodeU64(adjustedZScoreThreshold)),
+        tx.pure(encodeU64(adjustedAdditionalTakerFee)),
+        tx.object('0x6'),
+      ],
+      [base.type, quote.type],
+    );
+  }
+
+  Map<String, dynamic> enableEwmaState(
+      Transaction tx, String poolKey, bool enable) {
+    final pool = config.getPool(poolKey);
+    final base = config.getCoin(pool.baseCoin);
+    final quote = config.getCoin(pool.quoteCoin);
+
+    return tx.moveCall(
+      '${config.packageIds.deepbookPackageId}::pool::enable_ewma_state',
+      [
+        tx.object(pool.address),
+        tx.object(_adminCap()),
+        tx.pure(encodeBool(enable)),
+        tx.object('0x6'),
+      ],
+      [base.type, quote.type],
+    );
+  }
+
+  Map<String, dynamic> authorizeMarginApp(Transaction tx) {
+    return tx.moveCall(
+      '${config.packageIds.deepbookPackageId}::registry::authorize_app',
+      [tx.object(config.packageIds.registryId), tx.object(_adminCap())],
+      ['${config.packageIds.marginPackageId}::margin_manager::MarginApp'],
+    );
+  }
+
+  Map<String, dynamic> deauthorizeMarginApp(Transaction tx) {
+    return tx.moveCall(
+      '${config.packageIds.deepbookPackageId}::registry::deauthorize_app',
+      [tx.object(config.packageIds.registryId), tx.object(_adminCap())],
+      ['${config.packageIds.marginPackageId}::margin_manager::MarginApp'],
+    );
+  }
+
+  List<int> _encodeAddress(String address) {
+    final hex = address.startsWith('0x') ? address.substring(2) : address;
+    final bytes = <int>[];
+    for (var i = 0; i < hex.length; i += 2) {
+      bytes.add(int.parse(hex.substring(i, i + 2), radix: 16));
+    }
+    return bytes;
+  }
+}
+
+class MarginAdminContract {
+  const MarginAdminContract(this.config);
+
+  final DeepBookConfig config;
+
+  String _marginAdminCap() {
+    if (config.marginMaintainerCap == null ||
+        config.marginMaintainerCap!.isEmpty) {
+      throw Exception('MARGIN_ADMIN_CAP environment variable not set');
+    }
+    return config.marginMaintainerCap!;
+  }
+
+  Map<String, dynamic> mintMaintainerCap(Transaction tx) {
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::margin_registry::mint_maintainer_cap',
+      [
+        tx.object(config.packageIds.marginRegistryId),
+        tx.object(_marginAdminCap()),
+        tx.object('0x6'),
+      ],
+      const [],
+    );
+  }
+
+  Map<String, dynamic> revokeMaintainerCap(
+      Transaction tx, String maintainerCapId) {
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::margin_registry::revoke_maintainer_cap',
+      [
+        tx.object(config.packageIds.marginRegistryId),
+        tx.object(_marginAdminCap()),
+        tx.object(maintainerCapId),
+        tx.object('0x6'),
+      ],
+      const [],
+    );
+  }
+
+  Map<String, dynamic> registerDeepbookPool(
+      Transaction tx, String poolKey, dynamic poolConfig) {
+    final pool = config.getPool(poolKey);
+    final base = config.getCoin(pool.baseCoin);
+    final quote = config.getCoin(pool.quoteCoin);
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::margin_registry::register_deepbook_pool',
+      [
+        tx.object(config.packageIds.marginRegistryId),
+        tx.object(_marginAdminCap()),
+        tx.object(pool.address),
+        poolConfig,
+        tx.object('0x6'),
+      ],
+      [base.type, quote.type],
+    );
+  }
+
+  Map<String, dynamic> enableDeepbookPool(Transaction tx, String poolKey) {
+    final pool = config.getPool(poolKey);
+    final base = config.getCoin(pool.baseCoin);
+    final quote = config.getCoin(pool.quoteCoin);
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::margin_registry::enable_deepbook_pool',
+      [
+        tx.object(config.packageIds.marginRegistryId),
+        tx.object(_marginAdminCap()),
+        tx.object(pool.address),
+        tx.object('0x6'),
+      ],
+      [base.type, quote.type],
+    );
+  }
+
+  Map<String, dynamic> disableDeepbookPool(Transaction tx, String poolKey) {
+    final pool = config.getPool(poolKey);
+    final base = config.getCoin(pool.baseCoin);
+    final quote = config.getCoin(pool.quoteCoin);
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::margin_registry::disable_deepbook_pool',
+      [
+        tx.object(config.packageIds.marginRegistryId),
+        tx.object(_marginAdminCap()),
+        tx.object(pool.address),
+        tx.object('0x6'),
+      ],
+      [base.type, quote.type],
+    );
+  }
+
+  Map<String, dynamic> updateRiskParams(
+      Transaction tx, String poolKey, dynamic poolConfig) {
+    final pool = config.getPool(poolKey);
+    final base = config.getCoin(pool.baseCoin);
+    final quote = config.getCoin(pool.quoteCoin);
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::margin_registry::update_risk_params',
+      [
+        tx.object(config.packageIds.marginRegistryId),
+        tx.object(_marginAdminCap()),
+        tx.object(pool.address),
+        poolConfig,
+        tx.object('0x6'),
+      ],
+      [base.type, quote.type],
+    );
+  }
+
+  Map<String, dynamic> addConfig(Transaction tx, dynamic config) {
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::margin_registry::add_config',
+      [
+        tx.object(config.packageIds.marginRegistryId),
+        tx.object(_marginAdminCap()),
+        config,
+      ],
+      ['${config.packageIds.marginPackageId}::oracle::PythConfig'],
+    );
+  }
+
+  Map<String, dynamic> removeConfig(Transaction tx) {
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::margin_registry::remove_config',
+      [
+        tx.object(config.packageIds.marginRegistryId),
+        tx.object(_marginAdminCap())
+      ],
+      ['${config.packageIds.marginPackageId}::oracle::PythConfig'],
+    );
+  }
+
+  Map<String, dynamic> enableVersion(Transaction tx, int version) {
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::margin_registry::enable_version',
+      [
+        tx.object(config.packageIds.marginRegistryId),
+        tx.pure(encodeU64(version)),
+        tx.object(_marginAdminCap()),
+      ],
+      const [],
+    );
+  }
+
+  Map<String, dynamic> disableVersion(Transaction tx, int version) {
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::margin_registry::disable_version',
+      [
+        tx.object(config.packageIds.marginRegistryId),
+        tx.pure(encodeU64(version)),
+        tx.object(_marginAdminCap()),
+      ],
+      const [],
+    );
+  }
+
+  Map<String, dynamic> pauseMarginManager(
+      Transaction tx, String marginManagerKey) {
+    final manager = config.getMarginManager(marginManagerKey);
+    final pool = config.getPool(manager.poolKey);
+    final base = config.getCoin(pool.baseCoin);
+    final quote = config.getCoin(pool.quoteCoin);
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::margin_admin::pause_margin_manager',
+      [tx.object(manager.address), tx.object(_marginAdminCap())],
+      [base.type, quote.type],
+    );
+  }
+
+  Map<String, dynamic> unpauseMarginManager(
+      Transaction tx, String marginManagerKey) {
+    final manager = config.getMarginManager(marginManagerKey);
+    final pool = config.getPool(manager.poolKey);
+    final base = config.getCoin(pool.baseCoin);
+    final quote = config.getCoin(pool.quoteCoin);
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::margin_admin::unpause_margin_manager',
+      [tx.object(manager.address), tx.object(_marginAdminCap())],
+      [base.type, quote.type],
+    );
+  }
+
+  Map<String, dynamic> registerDeepbookPoolAdmin(
+      Transaction tx, String poolKey, dynamic poolConfig) {
+    final pool = config.getPool(poolKey);
+    final base = config.getCoin(pool.baseCoin);
+    final quote = config.getCoin(pool.quoteCoin);
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::margin_admin::register_deepbook_pool',
+      [
+        tx.object(pool.address),
+        tx.object(config.packageIds.marginRegistryId),
+        tx.object(_marginAdminCap()),
+      ],
+      [base.type, quote.type],
+    );
+  }
+
+  Map<String, dynamic> newPoolConfig(Transaction tx, String coinKey,
+      double minBorrow, double liquidationDiscount, double sweepDiscount) {
+    final coin = config.getCoin(coinKey);
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::margin_registry::new_pool_config',
+      [
+        tx.pure(encodeU64((minBorrow * coin.scalar).round())),
+        tx.pure(encodeU64((liquidationDiscount * floatScalar).round())),
+        tx.pure(encodeU64((sweepDiscount * floatScalar).round())),
+      ],
+      const [],
+    );
+  }
+
+  Map<String, dynamic> newPoolConfigWithLeverage(
+      Transaction tx,
+      String coinKey,
+      double minBorrow,
+      double liquidationDiscount,
+      double sweepDiscount,
+      double leverage) {
+    final coin = config.getCoin(coinKey);
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::margin_registry::new_pool_config_with_leverage',
+      [
+        tx.pure(encodeU64((minBorrow * coin.scalar).round())),
+        tx.pure(encodeU64((liquidationDiscount * floatScalar).round())),
+        tx.pure(encodeU64((sweepDiscount * floatScalar).round())),
+        tx.pure(encodeU64((leverage * floatScalar).round())),
+      ],
+      const [],
+    );
+  }
+
+  Map<String, dynamic> mintPauseCap(Transaction tx) {
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::margin_registry::mint_pause_cap',
+      [
+        tx.object(config.packageIds.marginRegistryId),
+        tx.object(_marginAdminCap())
+      ],
+      const [],
+    );
+  }
+
+  Map<String, dynamic> revokePauseCap(Transaction tx, String pauseCapId) {
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::margin_registry::revoke_pause_cap',
+      [
+        tx.object(config.packageIds.marginRegistryId),
+        tx.object(_marginAdminCap()),
+        tx.object(pauseCapId),
+      ],
+      const [],
+    );
+  }
+
+  Map<String, dynamic> disableVersionPauseCap(Transaction tx, int version) {
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::margin_registry::disable_version_pause_cap',
+      [
+        tx.object(config.packageIds.marginRegistryId),
+        tx.pure(encodeU64(version)),
+        tx.object(_marginAdminCap()),
+      ],
+      const [],
+    );
+  }
+
+  Map<String, dynamic> adminWithdrawDefaultReferralFees(
+      Transaction tx, String coinKey, String marginPoolCap) {
+    final marginPool = config.getMarginPool(coinKey);
+    return tx.moveCall(
+      '${config.packageIds.marginPackageId}::margin_pool::admin_withdraw_default_referral_fees',
+      [
+        tx.object(marginPool.address),
+        tx.object(config.packageIds.marginRegistryId),
+        tx.object(marginPoolCap),
+        tx.object('0x6'),
+      ],
+      [marginPool.type],
+    );
   }
 }

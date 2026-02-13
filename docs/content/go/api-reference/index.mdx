@@ -1,0 +1,45 @@
+---
+title: API Reference
+---
+
+当前仓库还没有独立的 Go API 文档站点，但你可以用以下方式获得接近 Typed API 文档的阅读体验。
+
+## 方式一：本地 `go doc`
+
+```bash
+cd go-sdks
+go doc github.com/sui-sdks/go-sdks/sui/jsonrpc
+go doc github.com/sui-sdks/go-sdks/sui/transactions
+go doc github.com/sui-sdks/go-sdks/deepbook_v3
+```
+
+查看具体方法：
+
+```bash
+go doc github.com/sui-sdks/go-sdks/deepbook_v3.Client.GetQuantityOut
+go doc github.com/sui-sdks/go-sdks/deepbook_v3/transactions.DeepBookContract.PlaceLimitOrder
+```
+
+## 方式二：按包阅读源码
+
+- `go-sdks/bcs`
+- `go-sdks/sui`
+- `go-sdks/walrus`
+- `go-sdks/seal`
+- `go-sdks/deepbook_v3`
+
+## 方式三：通过测试反推最佳实践
+
+高价值示例测试：
+
+- `sui/transactions/*_test.go`
+- `deepbook_v3/client_methods_test.go`
+- `deepbook_v3/transactions/contracts_test.go`
+- `bcs/*_test.go`
+
+## 推荐阅读顺序
+
+1. `sui/install` + `sui/hello-sui`
+2. `sui/clients/*`
+3. `sui/transaction-building/*`
+4. `deepbook-v3/*`（交易与查询）

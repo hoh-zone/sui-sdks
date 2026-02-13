@@ -1,0 +1,33 @@
+---
+title: DeepBook V3 (Go)
+---
+
+`deepbook_v3` 是 Go 版本的 DeepBook V3 SDK 绑定，提供：
+
+- 客户端查询封装（基于 `sui_dryRunTransactionBlock`）
+- 交易构建合约封装（Spot、Margin、Admin、Governance、Flash Loan）
+- 主网/测试网默认配置（coins、pools、package IDs）
+- 参数类型、精度换算、基础校验与错误模型
+
+包路径：
+
+- `go-sdks/deepbook_v3`
+- `go-sdks/deepbook_v3/transactions`
+- `go-sdks/deepbook_v3/types`
+- `go-sdks/deepbook_v3/utils`
+
+## 文档导航
+
+- [快速开始](./quickstart)
+- [客户端查询（Dry-Run）](./client-queries)
+- [现货交易交易构建](./trading-transactions)
+- [杠杆交易交易构建](./margin-transactions)
+- [管理员与治理操作](./admin-governance)
+- [类型、精度与常量](./types-and-scalars)
+- [错误与校验](./errors-and-validation)
+
+## 当前实现状态
+
+- 详细状态：`docs/DEEPBOOK_V3.md`
+- 对照计划：`docs/DEEPBOOK_CONFORMANCE.md`
+- 全仓库状态：`docs/IMPLEMENTATION_STATUS.md`

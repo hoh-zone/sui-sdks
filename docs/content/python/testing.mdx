@@ -1,0 +1,18 @@
+---
+title: Testing
+---
+
+## Run all tests
+
+```bash
+cd py-sdks
+PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_*.py' -v
+```
+
+## Main suites
+
+- `tests/bcs/*`
+- `tests/sui/*`
+- `tests/deepbook_v3/*`
+- `tests/walrus/*`
+- `tests/seal/*`

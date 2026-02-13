@@ -1,0 +1,4 @@
+{
+  "title": "Go SDK",
+  "pages": ["sui", "bcs", "walrus", "seal", "deepbook-v3", "api-reference"]
+}

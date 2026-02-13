@@ -1,0 +1,62 @@
+---
+title: 杠杆交易交易构建
+---
+
+杠杆相关核心封装：
+
+- `MarginManagerContract`
+- `MarginPoolContract`
+- `MarginRegistryContract`
+- `MarginLiquidationsContract`
+- `PoolProxyContract`
+- `MarginTPSLContract`
+
+代码位置：`go-sdks/deepbook_v3/transactions/margin.go`。
+
+## 初始化和资金操作
+
+- 新建账户：`NewMarginManager` / `NewMarginManagerWithInitializer`
+- 入金：`DepositBase` / `DepositQuote`
+- 出金：`WithdrawBase` / `WithdrawQuote`
+- 借款：`BorrowBase` / `BorrowQuote`
+- 还款：`RepayBase` / `RepayQuote`
+
+## 杠杆下单（通过 PoolProxy）
+
+```go
+tx := stx.NewTransaction()
+
+client.PoolProxy.PlaceLimitOrder(tx, types.PlaceMarginLimitOrderParams{
+	PoolKey:            "DEEP_SUI",
+	MarginManagerKey:   "main_margin",
+	ClientOrderID:      "2001",
+	Price:              0.00011,
+	Quantity:           10,
+	IsBid:              true,
+	Expiration:         0,
+	OrderType:          types.OrderTypeNoRestriction,
+	SelfMatchingOption: types.SelfMatchingAllowed,
+	PayWithDeep:        false,
+})
+```
+
+也可使用：
+
+- `PlaceMarketOrder`
+- `CancelOrder`
+- `CancelOrders`
+- `CancelAllOrders`
+- `WithdrawSettledAmounts`
+
+## 止盈止损（TPSL）
+
+- 添加条件单：`AddConditionalOrder`
+- 取消全部条件单：`CancelAllConditionalOrders`
+- 查询条件单 id：`ConditionalOrderIDs`
+- 查询触发边界：`LowestTriggerAbovePrice` / `HighestTriggerBelowPrice`
+
+## 查询辅助
+
+- `GetMarginAccountOrderDetails`（client 方法，返回 base64 BCS）
+- `GetMarginManagerIDs`（registry）
+- `GetMarginPoolID`（registry）

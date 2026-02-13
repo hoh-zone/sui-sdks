@@ -1,0 +1,25 @@
+---
+title: Install & Setup
+---
+
+## Local development setup
+
+```bash
+cd py-sdks
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install -U pip
+python3 -m pip install cryptography
+```
+
+## Run tests
+
+```bash
+cd py-sdks
+PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_*.py' -v
+```
+
+## Notes
+
+- 当前工程以 `PYTHONPATH=src` 的方式运行。
+- 密码学相关实现依赖 `cryptography`。

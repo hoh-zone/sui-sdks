@@ -1,0 +1,56 @@
+---
+title: 类型、精度与常量
+---
+
+## 参数类型
+
+类型定义位于：`go-sdks/deepbook_v3/types/types.go`。
+
+高频参数结构：
+
+- `PlaceLimitOrderParams`
+- `PlaceMarketOrderParams`
+- `PlaceMarginLimitOrderParams`
+- `PlaceMarginMarketOrderParams`
+- `AddConditionalOrderParams`
+- `CreatePoolAdminParams`
+- `ProposalParams`
+
+## 枚举
+
+- `OrderType`
+- `OrderTypeNoRestriction`
+- `OrderTypeImmediateOrCancel`
+- `OrderTypeFillOrKill`
+- `OrderTypePostOnly`
+
+- `SelfMatchingOptions`
+- `SelfMatchingAllowed`
+- `CancelTaker`
+- `CancelMaker`
+
+## 精度常量
+
+定义位置：`go-sdks/deepbook_v3/utils/config.go`。
+
+- `FloatScalar = 1_000_000_000`
+- `DeepScalar = 1_000_000`
+- `GasBudget = 250_000_000`
+- `MaxTimestamp = 1_844_674_407_370_955_161`
+
+## 默认网络映射
+
+定义位置：`go-sdks/deepbook_v3/utils/constants.go`。
+
+- `MainnetPackageIDs` / `TestnetPackageIDs`
+- `MainnetCoins` / `TestnetCoins`
+- `MainnetPools` / `TestnetPools`
+- `MainnetMarginPools` / `TestnetMarginPools`
+
+## 精度换算规则
+
+典型换算方式（见 `transactions/deepbook.go`）：
+
+- 价格：`u64(price * FloatScalar * quoteScalar / baseScalar)`
+- 数量：`u64(quantity * baseScalar)`
+- 推荐在业务层保留 `float64` 用户单位，仅在构建交易时转换为链上单位。

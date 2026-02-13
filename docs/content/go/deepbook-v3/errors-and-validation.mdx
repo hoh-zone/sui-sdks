@@ -1,0 +1,55 @@
+---
+title: 错误与校验
+---
+
+错误与校验实现位置：
+
+- `go-sdks/deepbook_v3/utils/errors.go`
+- `go-sdks/deepbook_v3/utils/validation.go`
+
+## 错误类型
+
+- `DeepBookError`
+- `ResourceNotFoundError`
+- `ConfigurationError`
+- `ValidationError`
+
+## 常见错误来源
+
+- 配置缺失：
+- `Admin capability not configured`
+- `Margin admin capability not configured`
+- `Margin maintainer capability not configured`
+- 资源 key 不存在：
+- `Coin not found for key: ...`
+- `Pool not found for key: ...`
+- `Balance manager with key ... not found`
+- 参数非法：
+- 地址格式不合法
+- 数值为负或为零（取决于校验函数）
+
+## 校验函数
+
+- `ValidateAddress`
+- `ValidatePositiveNumber`
+- `ValidateNonNegativeNumber`
+- `ValidateRange`
+- `ValidateNonEmptyArray`
+
+当前实现中部分配置访问函数在找不到 key 时会 `panic`（例如 `GetCoin` / `GetPool`）。
+
+建议在业务层包装 recover 或预先检查配置完整性，避免请求路径上出现未处理 panic。
+
+## dry-run 解析错误
+
+`Client` 查询依赖返回结构字段：
+
+- `commandResults`
+- `returnValues`
+- `bcs`
+
+若节点响应结构不满足预期，会返回类似：
+
+- `missing commandResults[...]`
+- `missing returnValues[...]`
+- `missing bcs`

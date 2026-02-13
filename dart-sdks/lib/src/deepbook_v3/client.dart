@@ -12,7 +12,8 @@ class DeepBookClient {
     deepbook = DeepBookContract(config, balanceManager);
     governance = GovernanceContract(config, balanceManager);
     flashLoans = FlashLoanContract(config);
-    admin = DeepBookAdminContract(config);
+    deepbookAdmin = DeepbookAdminContract(config);
+    marginAdmin = MarginAdminContract(config);
     marginManager = MarginManagerContract(config);
     marginTpsl = MarginTPSLContract(config);
     swap = SwapMethods(config);
@@ -30,7 +31,8 @@ class DeepBookClient {
   late final DeepBookContract deepbook;
   late final GovernanceContract governance;
   late final FlashLoanContract flashLoans;
-  late final DeepBookAdminContract admin;
+  late final DeepbookAdminContract deepbookAdmin;
+  late final MarginAdminContract marginAdmin;
   late final MarginManagerContract marginManager;
   late final MarginTPSLContract marginTpsl;
   late final SwapMethods swap;

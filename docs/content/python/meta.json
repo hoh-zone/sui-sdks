@@ -1,0 +1,14 @@
+{
+  "title": "Python SDK",
+  "pages": [
+    "index",
+    "install",
+    "sui",
+    "bcs",
+    "deepbook-v3",
+    "walrus",
+    "seal",
+    "testing",
+    "implementation-status"
+  ]
+}

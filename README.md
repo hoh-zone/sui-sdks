@@ -21,6 +21,11 @@ A multi-language SDK monorepo for the **Sui ecosystem**, focused on practical im
 - `swift-sdks/`: Swift SDK
 - `dart-sdks/`: Dart SDK
 
+## Documentation Site
+
+- Top-level docs site: `docs/`
+- Run locally: `cd docs && npm install && npm run dev`
+
 ## Getting Started
 
 Go to the target language directory and read its `README.md` for install, build, and test instructions.

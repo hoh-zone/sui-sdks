@@ -95,6 +95,7 @@ class DeepBookConfig {
     Map<String, MarginPool>? marginPools,
     this.packageIds = testnetPackageIds,
     this.marginMaintainerCap,
+    this.adminCap,
   })  : balanceManagers = balanceManagers ?? <String, BalanceManager>{},
         marginManagers = marginManagers ?? <String, MarginManager>{},
         coins = coins ?? Map<String, Coin>.from(testnetCoins),
@@ -111,6 +112,7 @@ class DeepBookConfig {
   final Map<String, MarginPool> marginPools;
   final PackageIds packageIds;
   final String? marginMaintainerCap;
+  final String? adminCap;
 
   Coin getCoin(String key) {
     final coin = coins[key];

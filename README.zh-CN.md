@@ -21,6 +21,11 @@
 - `swift-sdks/`：Swift SDK
 - `dart-sdks/`：Dart SDK
 
+## 文档站点
+
+- 顶层文档站：`docs/`
+- 本地运行：`cd docs && npm install && npm run dev`
+
 ## 快速开始
 
 进入对应语言目录，查看各自的 `README.md` 获取安装、构建与测试说明。

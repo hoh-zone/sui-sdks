@@ -1,0 +1,28 @@
+---
+title: Rust SDK Overview
+---
+
+`rust-sdks` 是 `sui-sdks` 仓库下的 Rust SDK 实现。
+
+## Workspace layout
+
+当前采用 multi-crate 结构：
+
+- `rust-sdks/crates/sui`
+- `rust-sdks/crates/deepbook-v3`
+- `rust-sdks/crates/walrus`
+- `rust-sdks/crates/seal`
+
+## Core scope
+
+- Sui clients: JSON-RPC / GraphQL / gRPC
+- Transactions / verify / multisig / zkLogin
+- BCS & crypto helpers
+- DeepBook V3 baseline
+- Walrus baseline
+- Seal baseline
+
+## Source pointers
+
+- Workspace: `rust-sdks/`
+- README: `rust-sdks/README.md`

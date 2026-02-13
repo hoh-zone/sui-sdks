@@ -208,3 +208,81 @@ class SubmitProposalParams {
   final double makerFee;
   final double stakeRequired;
 }
+
+class CreatePoolAdminParams {
+  const CreatePoolAdminParams({
+    required this.baseCoinKey,
+    required this.quoteCoinKey,
+    required this.tickSize,
+    required this.lotSize,
+    required this.minSize,
+    this.whitelisted = false,
+    this.stablePool = false,
+  });
+
+  final String baseCoinKey;
+  final String quoteCoinKey;
+  final double tickSize;
+  final double lotSize;
+  final double minSize;
+  final bool whitelisted;
+  final bool stablePool;
+}
+
+class SetEwmaParams {
+  const SetEwmaParams({
+    required this.alpha,
+    required this.zScoreThreshold,
+    required this.additionalTakerFee,
+  });
+
+  final double alpha;
+  final double zScoreThreshold;
+  final double additionalTakerFee;
+}
+
+class MarginProposalParams {
+  const MarginProposalParams({
+    required this.takerFee,
+    required this.makerFee,
+    required this.stakeRequired,
+  });
+
+  final double takerFee;
+  final double makerFee;
+  final double stakeRequired;
+}
+
+class MarginPoolConfigParams {
+  const MarginPoolConfigParams({
+    required this.supplyCap,
+    required this.maxUtilizationRate,
+    required this.referralSpread,
+    required this.minBorrow,
+    this.rateLimitCapacity,
+    this.rateLimitRefillRatePerMs,
+    this.rateLimitEnabled,
+  });
+
+  final double supplyCap;
+  final double maxUtilizationRate;
+  final double referralSpread;
+  final double minBorrow;
+  final double? rateLimitCapacity;
+  final double? rateLimitRefillRatePerMs;
+  final bool? rateLimitEnabled;
+}
+
+class InterestConfigParams {
+  const InterestConfigParams({
+    required this.baseRate,
+    required this.baseSlope,
+    required this.optimalUtilization,
+    required this.excessSlope,
+  });
+
+  final double baseRate;
+  final double baseSlope;
+  final double optimalUtilization;
+  final double excessSlope;
+}
